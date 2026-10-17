@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a5f4a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+<title>勤務表（1階・2階）</title>
+<style>
+  :root {
+    --bg: #f3f5f4; --card: #fff; --text: #1a1a1a; --muted: #5a6a64;
+    --border: #cfd8d4; --primary: #1a5f4a; --primary-soft: #e6f3ee;
+    --warn: #c62828; --warn-bg: #ffebee; --ok: #2e7d32;
+    --radius: 12px; --tap: 48px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+    --早番:#ef6c00; --早番-bg:#fff3e0;
+    --遅番:#7b1fa2; --遅番-bg:#f3e5f5;
+    --超遅番:#00838f; --超遅番-bg:#e0f7fa;
+    --日勤:#2e7d32; --日勤-bg:#e8f5e9;
+    --夜勤:#1565c0; --夜勤-bg:#e3f2fd;
+    --明け:#546e7a; --明け-bg:#eceff1;
+    --休み:#6d4c41; --休み-bg:#efebe9;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+      "Noto Sans JP", "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.45;
+    padding: 12px; padding-bottom: 96px;
+  }
+  h1 { font-size: 1.15rem; margin: 0 0 4px; color: var(--primary); }
+  .subtitle { font-size: 0.8rem; color: var(--muted); margin: 0 0 12px; }
+  .card {
+    background: var(--card); border-radius: var(--radius); padding: 14px;
+    margin-bottom: 12px; box-shadow: var(--shadow); border: 1px solid var(--border);
+  }
+  .card h2 { font-size: 0.95rem; margin: 0 0 10px; color: var(--primary); }
+  label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
+  input[type="text"], select {
+    width: 100%; min-height: var(--tap); font-size: 1rem;
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .row > * { flex: 1 1 120px; }
+  .staff-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 560px) { .staff-grid { grid-template-columns: 1fr 1fr; } }
+  .staff-item {
+    display: grid; grid-template-columns: 28px 1fr; gap: 6px 8px; align-items: center;
+    padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: #fafcfb;
+  }
+  .staff-item .num { font-size: 0.8rem; color: var(--muted); text-align: right; }
+  .staff-item .fields { display: flex; flex-direction: column; gap: 6px; grid-column: 2; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: var(--tap); padding: 10px 16px; font-size: 1rem; font-weight: 600;
+    border: none; border-radius: 10px; cursor: pointer; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-primary { background: var(--primary); color: #fff; width: 100%; }
+  .btn-primary:active { opacity: 0.9; }
+  .btn-secondary { background: var(--primary-soft); color: var(--primary); border: 1px solid #b8d9cc; }
+  .btn-ghost { background: #fff; color: var(--text); border: 1px solid var(--border); }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .btn-row .btn { flex: 1 1 140px; }
+  .hint { font-size: 0.75rem; color: var(--muted); margin: 8px 0 0; }
+  .rules-box {
+    background: var(--primary-soft); border-radius: 8px; padding: 10px 12px;
+    font-size: 0.8rem; color: #1a3d32;
+  }
+  .rules-box ul { margin: 6px 0 0; padding-left: 1.2em; }
+  .rules-box li { margin-bottom: 3px; }
+  .time-list { margin: 8px 0 0; padding: 0; list-style: none; font-size: 0.78rem; }
+  .time-list li {
+    display: flex; justify-content: space-between; gap: 8px;
+    padding: 4px 0; border-bottom: 1px dashed #c5ddd4;
+  }
+  .time-list li:last-child { border-bottom: none; }
+  .cal-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+  table.cal { width: 100%; border-collapse: collapse; min-width: 580px; font-size: 0.7rem; }
+  table.cal th, table.cal td {
+    border: 1px solid var(--border); padding: 2px; text-align: center; vertical-align: middle;
+  }
+  table.cal thead th {
+    background: var(--primary); color: #fff; font-weight: 600;
+    position: sticky; top: 0; z-index: 2; padding: 6px 2px;
+  }
+  table.cal th.staff-col, table.cal td.staff-col {
+    position: sticky; left: 0; z-index: 1; min-width: 68px; max-width: 96px; word-break: break-all;
+  }
+  table.cal th.staff-col { z-index: 3; background: var(--primary); }
+  table.cal td.staff-col { background: #f0f7f4; font-weight: 600; font-size: 0.65rem; padding: 4px; }
+  table.cal td.staff-col .wt {
+    display: block; font-weight: 500; font-size: 0.55rem; color: var(--muted); margin-top: 2px;
+  }
+  table.cal th.day-h { min-width: 38px; }
+  table.cal th.sat { background: #1565c0; }
+  table.cal th.sun { background: #c62828; }
+  table.cal th.short4 { outline: 2px solid #ff8f00; outline-offset: -2px; }
+  .shift-btn {
+    display: block; width: 100%; min-height: 42px; border: none; border-radius: 6px;
+    font-size: 0.62rem; font-weight: 700; cursor: pointer; padding: 3px 1px;
+    touch-action: manipulation; line-height: 1.15;
+  }
+  .s-早番 { background: var(--早番-bg); color: var(--早番); }
+  .s-遅番 { background: var(--遅番-bg); color: var(--遅番); }
+  .s-超遅番 { background: var(--超遅番-bg); color: var(--超遅番); }
+  .s-日勤 { background: var(--日勤-bg); color: var(--日勤); }
+  .s-夜勤 { background: var(--夜勤-bg); color: var(--夜勤); }
+  .s-明け { color: transparent; background: linear-gradient(to top right, var(--明け-bg) calc(50% - 1.5px), #455a64 calc(50% - 1px), #455a64 calc(50% + 1px), var(--明け-bg) calc(50% + 1.5px)) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .legend .s-明け { color: var(--明け); }
+  .s-休み { color: transparent; background: linear-gradient(to top right, var(--休み-bg) calc(50% - 1.5px), #8d6e63 calc(50% - 1px), #8d6e63 calc(50% + 1px), var(--休み-bg) calc(50% + 1.5px)) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .legend .s-休み { color: var(--休み); }
+  .day-meta { font-size: 0.6rem; font-weight: 700; line-height: 1.2; }
+  .day-meta.ok { color: var(--ok); }
+  .day-meta.ng { color: var(--warn); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; font-size: 0.72rem; }
+  .legend span {
+    display: inline-flex; flex-direction: column; align-items: flex-start;
+    padding: 5px 8px; border-radius: 6px; font-weight: 600; line-height: 1.25;
+  }
+  .legend .t { font-weight: 500; font-size: 0.65rem; opacity: 0.9; }
+  .summary-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .summary-table th, .summary-table td {
+    border: 1px solid var(--border); padding: 6px 3px; text-align: center;
+  }
+  .summary-table th { background: var(--primary-soft); font-size: 0.68rem; }
+  .summary-table td.name { text-align: left; font-weight: 600; white-space: nowrap; }
+  .summary-table .bad { color: var(--warn); font-weight: 700; background: var(--warn-bg); }
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; padding: 10px 18px; border-radius: 24px;
+    font-size: 0.9rem; z-index: 200; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s; max-width: 90vw;
+  }
+  .toast.show { opacity: 1; }
+  .overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    z-index: 150; align-items: flex-end; justify-content: center;
+  }
+  .overlay.open { display: flex; }
+  .sheet {
+    background: #fff; width: 100%; max-width: 480px;
+    border-radius: 16px 16px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 24px rgba(0,0,0,.15);
+  }
+  .sheet h3 { margin: 0 0 12px; font-size: 1rem; text-align: center; }
+  .sheet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sheet-grid .btn { min-height: 52px; font-size: 0.95rem; flex-direction: column; gap: 2px; }
+  .sheet-grid .btn small { font-weight: 500; font-size: 0.65rem; opacity: 0.85; }
+  .sheet-cancel { margin-top: 10px; width: 100%; }
+  @media print {
+    body { background: #fff; padding: 0; font-size: 9pt; }
+    .no-print { display: none !important; }
+    .card { box-shadow: none; border: none; padding: 4px 0; margin-bottom: 6px; break-inside: avoid; }
+    table.cal { min-width: 0; font-size: 7pt; }
+    .shift-btn {
+      min-height: 18px; border: 1px solid #999;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .s-早番,.s-遅番,.s-超遅番,.s-日勤,.s-夜勤,.s-明け,.s-休み {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    h1 { font-size: 13pt; }
+  }
+  .phone-tip {
+    background: #fff8e1; border: 1px solid #ffe082; border-radius: var(--radius);
+    padding: 12px 14px; margin-bottom: 12px; font-size: 0.85rem; line-height: 1.5;
+    color: #5d4037;
+  }
+  .phone-tip strong { color: #e65100; display: block; margin-bottom: 4px; font-size: 0.95rem; }
+  .phone-tip ol { margin: 6px 0 0; padding-left: 1.3em; }
+  .phone-tip li { margin-bottom: 4px; }
+
+  /* v4.1 legibility */
+  body { font-family: "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+    font-size: 16px; line-height: 1.6; letter-spacing: 0.02em; -webkit-font-smoothing: antialiased; color: #111; }
+  :root {
+    --早番:#b34700; --早番-bg:#ffe8cc; --遅番:#5e1a8c; --遅番-bg:#efdcf7;
+    --超遅番:#00606b; --超遅番-bg:#cdf1f5; --日勤:#1b5e20; --日勤-bg:#d4efd6;
+    --夜勤:#0d3c8c; --夜勤-bg:#d3e4fb; --明け:#37474f; --明け-bg:#e2e7ea;
+    --休み:#4e342e; --休み-bg:#ece4e1; --muted:#3f4f49;
+  }
+  h1 { font-size: 1.35rem; font-weight: 800; }
+  .card h2 { font-size: 1.05rem; font-weight: 700; }
+  table.cal { font-size: 0.9rem; min-width: 760px; }
+  table.cal thead th { font-size: 0.85rem; font-weight: 700; padding: 6px 2px; line-height: 1.3; }
+  table.cal th.day-h { min-width: 44px; }
+  table.cal th.staff-col, table.cal td.staff-col { min-width: 84px; max-width: 110px; }
+  table.cal td.staff-col { font-size: 0.92rem; font-weight: 700; color: #102a22; line-height: 1.3; }
+  table.cal td.staff-col .wt { font-size: 0.68rem; font-weight: 500; color: #3f4f49; }
+  .shift-btn { font-family: inherit; min-height: 48px; font-size: 0.92rem; font-weight: 800;
+    letter-spacing: 0; line-height: 1.2; border: 1px solid rgba(0,0,0,.08); }
+  .day-meta { font-size: 0.72rem; }
+  .legend { font-size: 0.85rem; }
+  .summary-table { font-size: 0.9rem; }
+  .summary-table th { font-size: 0.8rem; }
+  @media print {
+    body { font-size: 10pt; }
+    table.cal { font-size: 9pt; }
+    .shift-btn { min-height: 20px; font-size: 9pt; font-weight: 800; }
+    table.cal td.staff-col { font-size: 9pt; }
+  }
+
+  /* v4.2 off numbers, 5/4 colors, A4 print */
+  .shift-btn { position: relative; }
+  .offn { position: absolute; top: 2px; left: 3px; font-size: 0.62rem; font-weight: 800; color: #3e2723; line-height: 1;
+    background: rgba(255,255,255,.85); border-radius: 3px; padding: 1px 2px; }
+  .offn.over { color: #fff; background: #c62828; }
+  td.t5 { background: #c8e6c9; } td.t5 .day-meta { color: #1b5e20; }
+  td.t4 { background: #ffe0b2; } td.t4 .day-meta { color: #a84300; }
+  td.tng { background: #ffcdd2; }
+  td.t5, td.t4, td.tng { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A4 landscape; margin: 7mm; }
+  @media print {
+    html, body { width: 283mm; margin: 0; padding: 0; }
+    header .subtitle { display: none; }
+    h1 { font-size: 12pt; margin: 0 0 2mm; }
+    .card { padding: 0; margin: 0 0 3mm; }
+    .cal-wrap { overflow: visible !important; }
+    table.cal { width: 100%; min-width: 0 !important; table-layout: fixed; border-collapse: collapse; font-size: 8.5pt; }
+    table.cal th.day-h { min-width: 0 !important; padding: 1px 0; font-size: 7.5pt; }
+    table.cal th.staff-col, table.cal td.staff-col { width: 17mm; min-width: 0 !important; font-size: 8pt; }
+    table.cal td { padding: 0 !important; }
+    .shift-btn { min-height: 14mm !important; height: 14mm; width: 100%; font-size: 9pt; border-radius: 0; }
+    .offn { font-size: 7.5pt; top: 1px; left: 1px; }
+    .day-meta { font-size: 8pt; padding: 1.5mm 0; }
+    section.card:last-of-type { break-before: page; }
+  }
+  /* v5 floors, 希望休, event days */
+  .tabs { position: sticky; top: 0; z-index: 20; display: flex; gap: 6px; background: var(--bg); padding: 6px 0 8px; }
+  .floor-tab { flex: 1; min-height: 52px; font-size: 1.1rem; font-weight: 800; border-radius: 12px; border: 2px solid var(--primary); background: #fff; color: var(--primary); }
+  .floor-tab.active { background: var(--primary); color: #fff; }
+  .two { display: flex; gap: 6px; } .two > * { flex: 1 1 0; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; color: var(--text); margin: 0; min-height: var(--tap); }
+  .chk input { width: 24px; height: 24px; }
+  .btn.del { font-size: 0.85rem; min-height: 44px; padding: 6px 8px; color: var(--warn); }
+  .wish-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 8px; }
+  .wish-grid .wd { text-align: center; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+  .wish-grid .wd.sun { color: #c62828; } .wish-grid .wd.sat { color: #1565c0; }
+  .wish-day { min-height: 46px; font-size: 1.05rem; font-weight: 700; border: 1px solid var(--border); border-radius: 10px; background: #fff; font-family: inherit; }
+  .wish-day.on { background: #d81b60; color: #fff; border-color: #ad1457; }
+  .wishm { position: absolute; top: 1px; right: 2px; font-size: 0.66rem; font-weight: 800; color: #fff; background: #d81b60; border-radius: 3px; padding: 0 2px; line-height: 1.3; }
+  .wishm.bad { background: #c62828; outline: 2px solid #c62828; }
+  .shift-btn.wish { box-shadow: inset 0 0 0 3px #d81b60; }
+  .legend .wishlg { position: relative; background: var(--休み-bg); box-shadow: inset 0 0 0 3px #d81b60; color: #ad1457; }
+  td.t6 { background: #bbdefb; } td.t6 .day-meta { color: #0d47a1; }
+  td.t6 { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  button.day-meta { display: block; width: 100%; border: none; background: transparent; font-family: inherit; padding: 4px 0; min-height: 44px; cursor: pointer; }
+  td.has-t button.day-meta { outline: 2px dashed #0d47a1; outline-offset: -3px; }
+  .tgt { font-size: 0.62rem; color: #0d47a1; }
+  .pat { font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-left: 6px; }
+  .okline { color: var(--ok); font-size: 0.9rem; margin: 4px 0; } .ngline { color: var(--warn); font-size: 0.9rem; margin: 4px 0; font-weight: 700; }
+  .sum-h { margin: 14px 0 6px; font-size: 1rem; color: var(--primary); }
+  .wish-btn { background: #fce4ec; color: #ad1457; border: 2px solid #d81b60 !important; }
+  .sheet-grid .btn.on { outline: 3px solid var(--primary); }
+  @media print {
+    .tabs { display: none !important; }
+    .floor-cal { break-after: page; page-break-after: always; }
+    .floor-cal .shift-btn { min-height: var(--rowh) !important; height: var(--rowh); }
+    .floor-cal .wishm { font-size: 6.5pt; }
+    .floor-cal .tgt { font-size: 6.5pt; }
+    button.day-meta { min-height: 0; padding: 1mm 0; font-size: 7.5pt; }
+    section.card:last-of-type { break-before: auto; }
+  }
+
+  /* v5.1 landscape / short-height layout */
+  .set-toggle { display: none; }
+  .settings-wrap > .card { margin-bottom: 12px; }
+  @media screen and (orientation: landscape) {
+    body { padding: 8px 12px 24px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+    header { display: flex; align-items: baseline; gap: 12px; }
+    header h1 { margin: 0; }
+    .set-toggle { display: block; flex: 0 0 auto; padding: 0 16px; background: #fff8e1; border-color: #e0a800; color: #6d4c00; }
+    body.show-settings .set-toggle { background: #6d4c00; color: #fff; }
+    .settings-wrap { display: none; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; align-items: start; margin-bottom: 10px; }
+    body.show-settings .settings-wrap { display: grid; }
+    .sheet .s-明け, .sheet .s-休み { color: #222 !important; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+    .settings-wrap > .card { margin: 0; min-width: 0; }
+    .staff-grid { grid-template-columns: 1fr; }
+    .settings-wrap > .staff-card { grid-row: span 3; }
+    #btnAuto { width: auto; flex: 2 1 220px; }
+    .card.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .card.actions .btn-row { margin: 0; flex: 3 1 420px; }
+    .card.actions .hint { flex: 1 1 100%; margin: 0; }
+    .legend { flex-wrap: nowrap; overflow-x: auto; margin: 0; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+    .legend span { flex: 0 0 auto; }
+    .card.legend-card { padding: 8px 10px; }
+    .floor-cal .cal-wrap { max-height: calc(100vh - 140px); max-height: calc(100dvh - 140px); overflow: auto; overscroll-behavior: contain; }
+    .floor-cal h2 { margin-bottom: 6px; }
+    table.cal { width: max-content; min-width: 100%; }
+    table.cal th.day-h { min-width: 44px; }
+    table.cal td { padding: 1px; }
+    .shift-btn { min-height: 44px; font-size: 1rem; }
+    .offn { font-size: 0.66rem; }
+    table.cal thead th { top: 0; }
+    .sheet { max-width: 760px; max-height: 94vh; max-height: 94dvh; overflow-y: auto; border-radius: 16px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); }
+    .sheet h3 { margin-bottom: 8px; }
+    .sheet-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .sheet-grid .btn { min-height: 48px; font-size: 1rem; padding: 6px 8px; }
+    .overlay { align-items: center; }
+  }
+  @media screen and (orientation: landscape) and (max-height: 600px) {
+    header .subtitle, .phone-tip, .tabs ~ .hint#allHint { display: none !important; }
+    .tabs { padding: 4px 0 6px; }
+    .floor-tab { min-height: 44px; font-size: 1rem; }
+    .floor-cal .cal-wrap { max-height: calc(100vh - 112px); max-height: calc(100dvh - 112px); }
+    h1 { font-size: 1.1rem; }
+    .card { padding: 10px 12px; margin-bottom: 8px; }
+    .btn { min-height: 44px; padding: 6px 12px; }
+    .card.actions .hint { display: none; }
+    .shift-btn { min-height: 42px; }
+    .sheet-grid { grid-template-columns: repeat(4, 1fr); }
+    .sheet-grid .btn { min-height: 44px; }
+    .sheet-grid .btn small { font-size: 0.62rem; }
+    .sheet-cancel { margin-top: 6px; min-height: 42px; }
+  }
+  @media screen and (orientation: landscape) and (max-height: 380px) {
+    .sheet-grid .btn small { display: none; }
+    .sheet-grid .btn { min-height: 42px; }
+    .sheet h3 { font-size: 0.95rem; margin-bottom: 6px; }
+  }
+
+  /* v5.2 有給・研修 */
+  .s-有給 { background: #fff59d !important; color: #5d4300 !important; font-weight: 900; box-shadow: inset 0 0 0 2px #c79a00; }
+  .s-研修 { background: #ffd0b5 !important; color: #8a2b00 !important; font-weight: 900; box-shadow: inset 0 0 0 2px #d84315; }
+  .shift-btn.s-有給, .shift-btn.s-研修 { font-size: 1.25rem; }
+  .paidn { position: absolute; top: 1px; left: 2px; font-size: 0.55rem; font-weight: 800; color: #5d4300; line-height: 1; }
+  .paidn::before { content: "有"; }
+  .paidn.over { color: #fff; background: #c62828; border-radius: 3px; padding: 0 1px; }
+  .legend .lgbig { font-size: 0.85rem; }
+  .s-有給, .s-研修 { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .wish-day.paid { background: #fff59d; color: #5d4300; border: 2px solid #c79a00; }
+  .wish-day.train { background: #ffd0b5; color: #8a2b00; border: 2px solid #d84315; }
+  .wish-day.paid::after { content: "有"; font-size: 0.65rem; margin-left: 2px; }
+  .wish-day.train::after { content: "研"; font-size: 0.65rem; margin-left: 2px; }
+  .wmodes { display: flex; gap: 6px; margin-bottom: 8px; } .wmodes .btn { flex: 1 1 0; padding: 8px 4px; }
+  .wmode { background: #fff; border: 2px solid var(--border); color: var(--text); }
+  .wmode.active[data-m="wish"] { background: #d81b60; border-color: #ad1457; color: #fff; }
+  .wmode.active[data-m="paid"] { background: #f9d71c; border-color: #c79a00; color: #3e2f00; }
+  .wmode.active[data-m="train"] { background: #d84315; border-color: #8a2b00; color: #fff; }
+  .paid-btn { background: #fff59d; color: #5d4300; border: 2px solid #c79a00 !important; }
+  .train-btn { background: #ffd0b5; color: #8a2b00; border: 2px solid #d84315 !important; }
+  .offinfo { font-size: 0.85rem; font-weight: 600; color: #3f4f49; }
+  @media print { .floor-cal .shift-btn.s-有給, .floor-cal .shift-btn.s-研修 { font-size: 11pt; } .paidn { font-size: 6pt; } }
+</style>
+</head>
+<body>
+  <header>
+    <h1>勤務表（1階・2階）</h1>
+    <p class="subtitle">階ごとに作成。夜勤は開始日表示・明けあり。希望休・必要人数の変更に対応</p>
+  </header>
+  <section class="card no-print phone-tip" id="phoneTip">
+    <strong>スマホで操作するには</strong>
+    Driveのプレビュー画面では入力やタップができません。HTMLをダウンロードして、Chromeで開いてください。
+  </section>
+  <div class="tabs no-print">
+    <button type="button" class="floor-tab" data-f="0">1階</button>
+    <button type="button" class="floor-tab" data-f="1">2階</button>
+    <button type="button" class="floor-tab" data-f="2">全体</button>
+    <button type="button" class="floor-tab set-toggle" id="btnSettings" aria-expanded="false">⚙ 設定</button>
+  </div>
+  <p class="hint no-print" id="allHint">全体表示中：設定・希望休は1階のものを表示しています。設定を変えるときは1階／2階のタブを押してください。「自動で組む」は両方の階を作ります。</p>
+  <div class="settings-wrap no-print" id="settingsWrap">
+  <section class="card no-print">
+    <h2>年月</h2>
+    <div class="row">
+      <div><label for="year">年</label><select id="year"></select></div>
+      <div><label for="month">月</label><select id="month"></select></div>
+    </div>
+  </section>
+  <section class="card no-print staff-card">
+    <h2><span class="edit-floor-name"></span>の職員</h2>
+    <p class="hint" id="staffCount"></p>
+    <div class="staff-grid" id="staffNames"></div>
+    <div class="btn-row"><button type="button" class="btn btn-secondary" id="btnAddStaff">＋ 職員を追加</button></div>
+    <p class="hint">名前・勤務タイプ・休みの日数（1〜20日、標準10日）を職員ごとに選べます。新しい職員は「制限なし」で追加されます。</p>
+  </section>
+  <section class="card no-print">
+    <h2><span class="edit-floor-name"></span>の連勤ルール（この月）</h2>
+    <select id="modeSel" aria-label="連勤ルール">
+      <option value="m4">4連勤なし（最大3連勤）・標準</option>
+      <option value="m3sel">3連勤なし（チェックした職員だけ最大2連勤）</option>
+      <option value="m5">4連勤あり（最大4連勤・忙しい月用）</option>
+    </select>
+    <div id="no3Row" class="btn-row"><button type="button" class="btn btn-ghost" id="btnAll3">全員の「3連勤なし」をまとめて切り替え</button></div>
+    <p class="hint">「3連勤なし」は職員欄のチェックで選びます。</p>
+  </section>
+  <section class="card no-print">
+    <h2><span class="edit-floor-name"></span>の希望休・有給・研修（この月）</h2>
+    <div class="wmodes"><button type="button" class="btn wmode" data-m="wish">希望休</button><button type="button" class="btn wmode" data-m="paid">有給</button><button type="button" class="btn wmode" data-m="train">研修</button></div>
+    <label for="wishStaff">入れるものを上で選び、職員を選んで日にちをタップ（もう一度タップで取り消し）</label>
+    <select id="wishStaff"></select>
+    <div class="wish-grid" id="wishDays"></div>
+    <p class="hint" id="wishList"></p>
+  </section>
+  </div>
+  <section class="card no-print actions">
+    <button type="button" class="btn btn-primary" id="btnAuto">自動で組む</button>
+    <div class="btn-row">
+      <button type="button" class="btn btn-secondary" id="btnPrint">印刷（A4横）</button>
+      <button type="button" class="btn btn-ghost" id="btnCopy">文字でコピー</button>
+      <button type="button" class="btn btn-ghost" id="btnClear">表をクリア</button>
+    </div>
+    <p class="hint">押すたびに別の組み方（パターン）になります。セルをタップすると役割・休み・希望休を変えられます。一番下の「体制」をタップすると、その日の必要人数（行事の日は6人など）を変えられます。</p>
+  </section>
+  <section class="card no-print legend-card">
+    <div class="legend">
+      <span class="s-早番">早番<small class="t">6:45–15:45</small></span>
+      <span class="s-遅番">遅番<small class="t">10:00–19:00</small></span>
+      <span class="s-超遅番">超遅番<small class="t">13:15–22:15</small></span>
+      <span class="s-日勤">日勤<small class="t">9:00–18:00</small></span>
+      <span class="s-夜勤">夜勤<small class="t">22:00–翌7:00</small></span>
+      <span class="s-明け">明け<small class="t">休み扱い</small></span>
+      <span class="s-休み">休み</span>
+      <span class="wishlg">希 希望休<small class="t">必ず休み・休みに含む</small></span>
+      <span class="s-有給 lgbig">有 有給<small class="t">休みとは別に数える</small></span>
+      <span class="s-研修 lgbig">研 研修<small class="t">出勤扱い・役割外</small></span>
+      <span style="background:#c8e6c9;color:#1b5e20">5人の日</span>
+      <span style="background:#ffe0b2;color:#a84300">4人の日</span>
+      <span style="background:#bbdefb;color:#0d47a1">6人以上</span>
+    </div>
+  </section>
+  <div id="calendars"></div>
+  <section class="card">
+    <h2>集計</h2>
+    <div id="summary"></div>
+  </section>
+  <div class="overlay no-print" id="picker" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-labelledby="pickerTitle">
+      <h3 id="pickerTitle">選択</h3>
+      <div class="sheet-grid" id="pickerGrid"></div>
+      <button type="button" class="btn btn-ghost sheet-cancel" id="pickerCancel">キャンセル</button>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+<script>
+(function () {
+  "use strict";
+/* PRECOMPUTED_START */
+  const PRECOMPUTED = {"2026-01": ["日休日日休日日休休日日日休日日日休日日休休日日日休日日休日日日", "休遅早休早早遅休休早早遅休遅早早休遅早休遅遅早休休遅早遅休遅遅", "遅超休早遅超休超夜夜明休遅夜明超早休遅超日休夜夜夜明休早早超休", "夜明遅遅日休超遅早休夜夜夜明休遅夜明超夜明超超休早早超休超早休", "早休超夜明遅夜明遅休超超超休超夜明超休早早早休遅休超夜明遅夜夜", "超夜明超夜明早夜明遅遅早休早遅休遅早夜明超夜明超超夜明夜明休超", "休早夜明超夜明早超超休休早超夜明超夜明遅夜明遅早遅休遅超夜明早"], "2026-02": ["休日日日休休日日日休日日休日日休日日休日休日日日休日日休", "休早休早早早休早遅早休早早遅休遅早早休遅休遅休遅早早休休", "夜夜夜明休超夜明夜明遅遅遅休超超遅休超超早休早夜明遅早休", "日超早休遅休超超早休休超超夜明早休遅遅休遅早夜明休夜夜夜", "超休遅遅超休遅夜明夜夜明休早夜明超超夜明超夜明早超休超超", "早遅休超夜夜明休超超超休夜明早休夜明早早夜明超超夜明遅遅", "遅休超夜明遅早遅休遅早夜明超遅夜明夜明夜明超遅休遅超休早"], "2026-03": ["日休日日休日日日休休日休日日休日日休日日休日日日休日日休日日日", "早早遅休早休休早遅早休遅休遅遅遅休早早休遅遅遅休遅早遅休休早早", "超超休遅遅夜明超日夜明超夜夜明休早遅休超早夜明早夜明休早遅超休", "休遅早超休早早夜明日遅夜明超夜明夜夜夜明休超超遅休超休超早遅休", "夜明超早夜明超遅夜明早早遅休早夜明休遅夜夜明休超超休超遅超休超", "遅休夜明超超遅休早遅夜明超早休早超超休早超休早夜明夜夜夜明休遅", "休夜明夜明遅夜明超超超休早休超超遅休超遅休早夜明早遅早休夜夜夜"], "2026-04": ["日休日日休日日休日休日日日休日休休日日日休日日日休日日日休日", "早休早早遅休遅早遅休遅遅遅休休早遅遅休早遅休休早早早休早休遅", "超遅休遅超休夜夜明休早超休早休遅夜明早夜明超遅夜明超早休超夜", "休超遅休早遅早休超超夜明早遅早休超夜明超夜夜明休遅夜夜明休超", "休早超夜明早超遅休遅超夜明夜夜夜明休遅休早休超遅夜明超超早休", "夜明夜明休超休超夜夜明休超超遅休早早夜明超早夜明超遅休遅遅早", "遅夜明超夜夜明休早早休早夜明超超休超超遅休遅早超休休遅夜夜明"], "2026-05": ["日日休休日日日休休日日休日日日休日日休日日休日日休日日日休日日", "早早休早遅休休遅遅早休遅遅早休早遅早休休早休遅遅早休早遅休遅遅", "超休超遅夜明早早夜明夜明超夜明超早夜明早遅遅休超日夜明超遅休休", "夜明早休早夜明夜明遅遅休夜明早休超遅夜明超超早休超遅夜明日超超", "休遅遅超休超夜明超夜明早早休超遅休超早夜明夜明早夜明遅早超休夜", "休夜明夜明遅超超休超超夜明超遅夜明休遅遅夜明超夜明早超休早早早", "遅超夜明超早遅休早休早超休遅夜明夜明超超休早夜明遅超休夜夜夜明"], "2026-06": ["日日休日日休日日日休日休日休日休日日日休休日日休日日休日日日", "早休休遅遅遅休遅早休早休遅遅休早早早休遅早遅休遅遅早休早早休", "休超遅休休早早夜明超遅遅休早早夜明遅超夜明夜夜夜明休超超休超", "超早早休早超夜明遅遅夜明超夜夜明休超早休夜明超超休夜明遅休遅", "夜明超早夜明遅超休夜明夜明超休超遅休夜明超超早休早遅早休遅夜", "休夜夜夜明休超休夜明超早夜明超遅夜明遅早休早遅休超超遅休超早", "遅遅休超超夜明早超早休超早休遅休超夜明超遅休休早夜明夜夜夜明"], "2026-07": ["日日休休日日日休日日日休日日日休日日日休休日日日休日日休日休日", "早早休遅遅休休早早早休遅遅休遅早休遅早休遅休遅早早休早遅休遅遅", "超休超超夜明早遅超休夜明超超夜明遅夜明早夜夜明休遅遅休早早早休", "夜明早夜明夜明超休超超夜明遅超休夜明遅夜明早早遅休超超休遅日早", "休超遅休早早夜明遅夜明早早夜明夜明超夜明超遅休超夜明遅休超超夜", "遅夜明早休超遅夜明遅早日休早休遅超早休超休超超夜明夜夜夜明休超", "休遅夜明超遅超休夜明遅超夜明早超早休超遅早休夜明超早休超夜夜明"], "2026-08": ["日日日休休日日休日日日休日休休日日日休日日日休日日日休日日休日", "休早休早早早休早遅遅休休早遅遅休早遅遅休遅遅早休早休遅早遅休遅", "休超遅遅休夜明超超夜明夜明超休遅遅夜明早早夜明早超超休夜明超早", "夜明早夜明超早遅休超夜明超早夜明超休夜明超超夜明遅遅早休早遅休", "早休超超夜明夜明早休遅超遅休早早夜明日夜夜明休遅夜明超遅超休超", "遅夜明日遅休遅夜明早超遅休夜明夜明超早超休早超超休夜明超休早夜", "超遅夜明超遅超休夜明早早夜明超超休早超遅休休遅夜明早夜明夜夜明"], "2026-09": ["日休休日日日休日日休日休日日休休日日日休日日休日日日休日日日", "早休休早早遅休早休休遅休遅早休遅早遅休遅遅遅休遅遅早休早早早", "遅遅早休休早遅夜明超早夜明超夜夜明休超夜明早夜明超休超超休遅", "超早遅休超超早休早遅夜明夜夜明休遅早夜明夜明超超休夜明遅超休", "夜明超遅夜明夜明遅夜明遅超休超超休超早休早休早早夜明夜明遅超", "休夜夜夜明休超超夜明超超早休早早夜明遅超休超遅休早遅遅休夜明", "休超休超遅夜明遅超早休早休遅遅休超夜明早超夜明夜明超早夜明夜"], "2026-10": ["日休日日休日日休休日日日休日日日休日日休休日日日休日日休日日日", "休遅早休早早遅休休早早遅休遅早早休遅早休遅遅早休休遅早遅休遅遅", "遅超休早遅超休超夜夜明休遅夜明超早休遅超日休夜夜夜明休早早超休", "夜明遅遅日休超遅早休夜夜夜明休遅夜明超夜明超超休早早超休超早休", "早休超夜明遅夜明遅休超超超休超夜明超休早早早休遅休超夜明遅夜夜", "超夜明超夜明早夜明遅遅早休早遅休遅早夜明超夜明超超夜明夜明休超", "休早夜明超夜明早超超休休早超夜明超夜明遅夜明遅早遅休遅超夜明早"], "2026-11": ["日休日日休日日休日休日日日休日休休日日日休日日日休日日日休日", "早休早早遅休遅早遅休遅遅遅休休早遅遅休早遅休休早早早休早休遅", "超遅休遅超休夜夜明休早超休早休遅夜明早夜明超遅夜明超早休超夜", "休超遅休早遅早休超超夜明早遅早休超夜明超夜夜明休遅夜夜明休超", "休早超夜明早超遅休遅超夜明夜夜夜明休遅休早休超遅夜明超超早休", "夜明夜明休超休超夜夜明休超超遅休早早夜明超早夜明超遅休遅遅早", "遅夜明超夜夜明休早早休早夜明超超休超超遅休遅早超休休遅夜夜明"], "2026-12": ["日日日休日日日休日休日日休日日日休日日休日日日休日休日日日休休", "休早遅休早遅休早遅遅休早早休遅早休遅遅休遅休早早遅休遅早休早早", "遅休超早夜明早遅夜明夜明夜明超超遅休超超休遅夜明早超夜明早遅休", "早遅休遅遅休超超休早超夜明早夜明夜明夜明超早超休超遅休休超夜夜", "夜明早夜明超夜明早夜明超超遅休夜明超早夜明超休超夜明早遅遅休遅", "休夜明超超夜明夜明日早遅休夜明遅超早休遅早夜明遅休早超夜明超超", "超超夜明休早遅休超超遅休遅超早休早夜明早夜明遅夜明夜明超夜明日"], "2027-01": ["日日休休日日日休日日日休日日日休日日日休日日日休休日日休日休日", "休早休遅遅早休早遅早休遅遅休早早休遅早休遅休遅早早休早遅休早遅", "超休超早夜明早遅超休夜明超遅夜明遅夜明早夜夜明休超遅休超早遅休", "夜明早超休夜明夜明超遅夜明超超休夜明遅夜明早早遅休超超休遅日早", "遅超遅休早休夜明早夜明早早夜明夜明超夜明超遅休超夜明遅休超超夜", "早夜明夜明遅遅超休遅早日休早休遅超早休超休超超夜明夜夜夜明休超", "休遅夜明超超超休夜明超超夜明遅超早休超遅早休夜明遅早休早夜夜明"], "2027-02": ["休日日日休休日日日休日日休日日休日日休日休日日日休日日休", "休早休早早早休早遅早休早早遅休遅早早休遅休遅休遅早早休休", "夜夜夜明休超夜明夜明遅遅遅休超超遅休超超早休早夜明遅早休", "日超早休遅休超超早休休超超夜明早休遅遅休遅早夜明休夜夜夜", "超休遅遅超休遅夜明夜夜明休早夜明超超夜明超夜明早超休超超", "早遅休超夜夜明休超超超休夜明早休夜明早早夜明超超夜明遅遅", "遅休超夜明遅早遅休遅早夜明超遅夜明夜明夜明超遅休遅超休早"], "2027-03": ["日日休日日日休休日休日日日休日日日休日休日日日休日日日休日休日", "早遅遅休遅早休遅早遅休休早遅休遅遅休遅早休遅早遅休早早早休早休", "夜明休超超休遅超夜明遅早超休早早夜明早夜明休超休超遅夜明遅夜夜", "遅休超早休超超夜明早早夜明夜夜明休遅超休遅超夜明早夜明超早遅休", "休超早夜明遅夜明遅超夜明夜明遅夜明夜明超早早休超遅超休休超超早", "超夜明遅夜明早早休休超遅休超超休早超夜明夜明遅早夜明超夜明日遅", "休早夜明早夜明日超夜明超遅早休超超早休遅超夜明夜明休遅遅夜明超"], "2027-04": ["日日休日日日休日休休日休日日日休日休日日休日日休日日休日日日", "早休休早早遅休早休遅遅休遅遅休遅早遅休休早遅早休遅早休早早遅", "遅超早休休早超夜明超早夜明超遅夜明休早遅休超夜夜明休遅超休夜", "超遅遅休超超早休遅夜明早夜明超休超早夜明夜明休遅夜夜明休超早", "夜明超遅夜明夜明夜明超遅休早夜明休超超夜明早遅休早超早休遅超", "休夜夜夜明休遅超超休夜明早休早早夜明遅超遅休超早超休超遅夜明", "休早休超遅夜明遅早早休超超夜明超遅夜明早超夜明超休遅夜夜明休"], "2027-05": ["日日休休日日日休日日日休日日日休日日日休日日日休休日日休日休日", "休早休遅遅早休早遅早休遅遅休早早休遅早休遅休遅早早休早遅休早遅", "超休超早夜明早遅超休夜明超遅夜明遅夜明早夜夜明休超遅休超早遅休", "夜明早超休夜明夜明超遅夜明超超休夜明遅夜明早早遅休超超休遅日早", "遅超遅休早休夜明早夜明早早夜明夜明超夜明超遅休超夜明遅休超超夜", "早夜明夜明遅遅超休遅早日休早休遅超早休超休超超夜明夜夜夜明休超", "休遅夜明超超超休夜明超超夜明遅超早休超遅早休夜明遅早休早夜夜明"], "2027-06": ["日休休日日日休日日休日休日休日休日日日休日日日休日日休日日日", "早休休早早遅休早休遅遅休遅遅休遅早遅休早早早休休遅早休遅早遅", "休遅早休休早超夜明超早夜明超遅夜明休超夜明超早夜明遅遅超休夜", "超早遅休超超早休早休夜明夜明夜明超夜明超遅遅休遅夜夜明休超早", "夜明超遅夜明夜明遅夜明遅休早超超休早夜明超休超早早休夜明遅超", "休夜夜夜明休遅超夜明超早超休早早夜明遅遅休休遅超超休超早夜明", "遅超休超遅夜明遅超早休超早夜明休遅超早休夜夜夜明休超早夜明休"], "2027-07": ["日休日休日日日休日休日日休日日日休日休日日休日日日休日日日休日", "休早休遅休早早休遅遅遅休遅休遅遅早休早早遅休遅遅早休早早早休遅", "超休超超夜明遅超夜明夜明超早夜明休超遅休早夜明早休超遅夜明遅早", "夜明早夜明夜明夜明超超遅休遅早休夜明超夜明早早休超遅超休遅早超", "早超遅休超遅夜明早早休早夜明超夜明遅夜明超超休夜夜明休遅超日休", "遅夜明早遅休超遅休日早夜明夜明早超早休超休遅超超休夜夜明休超夜", "休遅夜明早超休早超夜明超早超休超遅夜明遅夜明夜明遅早休超夜夜明"], "2027-08": ["日日休休日日日休休日日休日日日休日日休日日休日日休日日日休日日", "早早休早遅休休遅遅早休遅遅早休早遅早休休早休遅遅早休早遅休遅遅", "超休超遅夜明早早夜明夜明超夜明超早夜明早遅遅休超日夜明超遅休休", "夜明早休早夜明夜明遅遅休夜明早休超遅夜明超超早休超遅夜明日超超", "休遅遅超休超夜明超夜明早早休超遅休超早夜明夜明早夜明遅早超休夜", "休夜明夜明遅超超休超超夜明超遅夜明休遅遅夜明超夜明早超休早早早", "遅超夜明超早遅休早休早超休遅夜明夜明超超休早夜明遅超休夜夜夜明"], "2027-09": ["日日休休日休休日日休日日日休日休日日日休日日休日日日休日日日", "早休休早遅遅休遅早休遅遅遅休遅遅早休早早早休休遅休早休早早遅", "休超遅休休早遅夜明超早早休超超夜明早超遅休超遅休夜夜夜明休夜", "超遅超休超超早休遅夜明夜夜夜明休超休夜明夜明早早遅休遅超休早", "夜明早遅夜明夜明夜明超休超休早超休超遅夜明早超夜明遅早休遅超", "休夜夜夜明休超超休早夜明早早夜明遅遅休超遅夜明超早休超遅超休", "遅早休超早夜明早超遅休超休遅休早夜夜明休超遅夜明超超休夜夜明"], "2027-10": ["日休日日休日日日休休日日日休休日日日休日日日休日休日日日休日日", "休早遅休早早休遅遅早休早休遅遅休早早遅休遅遅遅休遅早早休遅早休", "超休超遅夜明夜明日夜明超遅夜明超遅遅休超早夜明早夜明休早休超早", "夜明休超休遅早夜明超夜明早早夜明超夜明夜明超超遅休超超休早遅遅", "早夜明早遅休超超超休早遅夜明早早夜明夜明夜明休超超休遅遅超休夜", "遅遅夜明超超遅休早遅超休超日休夜明休早早超休早夜明夜夜夜明休超", "休超早夜明夜明早夜明遅夜明超超遅休超超遅休早夜明早遅休超夜夜明"], "2027-11": ["日日休日日日休日休休日日休日日休休日日休日日日休日日休日日日", "早休休早早遅休遅休休遅休遅遅早休早早遅休早遅休早遅早休遅早遅", "遅超遅休休早超夜明超早夜明超遅早休遅夜明休早夜夜明休超超休夜", "超遅早休超超早休超遅夜明夜明夜明遅休早早夜明超遅休夜夜明休超", "夜明超遅夜明夜明遅夜明遅超早休超休超超夜明超早休夜明早早遅休", "休夜夜夜明休遅超夜明超早早休超夜夜明休超遅休遅休早超遅休超早", "休早休超遅夜明早早早休超休夜明遅超夜明遅超夜明超超遅休夜夜明"], "2027-12": ["日日休休日日日休休日日休日日日休日日休日日休日日休日日日休日日", "早早休早遅休休遅遅早休遅遅早休早遅早休休早休遅遅早休早遅休遅遅", "超休超遅夜明早早夜明夜明超夜明超早夜明早遅遅休超日夜明超遅休休", "夜明早休早夜明夜明遅遅休夜明早休超遅夜明超超早休超遅夜明日超超", "休遅遅超休超夜明超夜明早早休超遅休超早夜明夜明早夜明遅早超休夜", "休夜明夜明遅超超休超超夜明超遅夜明休遅遅夜明超夜明早超休早早早", "遅超夜明超早遅休早休早超休遅夜明夜明超超休早夜明遅超休夜夜夜明"]};
+
+  const PRE_MAP = {早:"早番",遅:"遅番",超:"超遅番",日:"日勤",夜:"夜勤",明:"明け",休:"休み"};
+  function decodePrecomputed(key) {
+    const rows = PRECOMPUTED[key];
+    if (!rows) return null;
+    return rows.map(s => [...s].map(ch => PRE_MAP[ch]));
+  }
+  function precomputedKey(y, m) {
+    return y + "-" + String(m).padStart(2, "0");
+  }
+  function defaultTypesMatch(wt) {
+    const def = ["day","earlyLate","none","none","none","none","none"];
+    return wt && wt.length === 7 && wt.every((t,i) => t === def[i]);
+  }
+  /* PRECOMPUTED_END */
+  /* WISH_SOLVER_START */
+  // Local-search solver honoring 希望休 (hard). Codes: 0早 1遅 2超 3日 4夜 5明 6休
+  function wishSolve(opt) {
+    const D = opt.D, N = opt.wt.length, wt = opt.wt, wish = opt.wish, offT = opt.offTarget;
+    const prevNight = opt.prevNight || Array(N).fill(0);
+    const CODES = ["早番", "遅番", "超遅番", "日勤", "夜勤", "明け", "休み", "有給", "研修"];
+    const trainFix = opt.trainFix || null;
+    const paidFix = opt.paidFix || null;
+    const allowed = [];
+    for (let p = 0; p < N; p++) {
+      allowed.push([]);
+      const base = wt[p] === "day" ? [3, 6] : wt[p] === "earlyLate" ? [0, 1, 6] : [0, 1, 2, 3, 4, 5, 6];
+      const paidT = opt.paidT ? opt.paidT[p] : 0;
+      const b2 = paidT > 0 ? base.concat([7]) : base;
+      for (let d = 0; d < D; d++) allowed[p].push(trainFix && trainFix[p][d] ? [8] : paidFix && paidFix[p][d] ? [7] : wish[p][d] ? (wt[p] === "none" ? [5, 6] : [6]) : b2);
+    }
+    const nightPeople = []; for (let p = 0; p < N; p++) if (wt[p] === "none") nightPeople.push(p);
+    const g = Array.from({ length: N }, () => new Int8Array(D));
+    let seed = opt.seed >>> 0 || 12345;
+    function rnd() { seed = (seed + 0x6d2b79f5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+    function ri(n) { return Math.floor(rnd() * n); }
+    function rowCost(p) {
+      const r = g[p]; let h = 0, s = 0, off = 0, paid = 0, runPaid = false, ws = 0, os = 0, nights = 0, e = 0, l = 0;
+      for (let d = 0; d < D; d++) {
+        const c = r[d], isO = c >= 5 && c <= 7;
+        if (c === 7) paid++;
+        if (isO) { if (c !== 7) off++; if (os === 0) runPaid = false; if (c === 7) runPaid = true; os++; ws = 0; if (os >= 3) h += (opt.looseOff && opt.looseOff[p]) || runPaid ? 2 : 20; } else { ws++; os = 0; if (ws > (opt.maxWork ? opt.maxWork[p] : 3)) h += (opt.looseWork && opt.looseWork[p]) ? 3 : 20; }
+        if (wish[p][d] && !isO) h += 60;
+        if (c === 4) nights++; else if (c === 0) e++; else if (c === 1) l++;
+        // night rules
+        const prev = d > 0 ? r[d - 1] : (prevNight[p] > 0 ? 4 : 6);
+        if (c === 5 && prev !== 4) h += 20;
+        if (prev === 4 && c !== 4 && c !== 5) h += 20;
+        if (d >= 2 && r[d - 2] === 4 && r[d - 1] === 5) {
+          const before = d >= 3 ? r[d - 3] : (prevNight[p] > 0 ? 4 : 6);
+          if (before === 4 && c !== 6 && c !== 7) h += 20;
+        }
+        if (d === 1 && prevNight[p] >= 1 && r[0] === 5 && prevNight[p] >= 2 && c !== 6 && c !== 7) h += 20;
+      }
+      { const dv = Math.abs(off - offT[p]); h += dv * dv * 4; const pv = Math.abs(paid - (opt.paidT ? opt.paidT[p] : 0)); h += pv * pv * 6; }
+      if (wt[p] === "earlyLate") s += Math.abs(e - l);
+      return { h, s, nights };
+    }
+    function colCost(d) {
+      const c = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+      for (let p = 0; p < N; p++) c[g[p][d]]++;
+      const k = opt.target ? opt.target[d] : 0;
+      if (!k) return 20 * (Math.max(0, 1 - c[0]) + Math.max(0, 1 - c[1]) + Math.max(0, 1 - c[2]) + Math.abs(c[4] - 1)) + 2 * (Math.max(0, c[0] - 1) + Math.max(0, c[1] - 1) + Math.max(0, c[2] - 1) + Math.max(0, c[3] - 1));
+      const w = c[0] + c[1] + c[2] + c[3] + c[4];
+      let h = Math.abs(w - k) * 5 + 20 * Math.abs(c[4] - 1);
+      if (k >= 4) h += 20 * (Math.max(0, 1 - c[0]) + Math.max(0, 1 - c[1]) + Math.max(0, 1 - c[2])) + (k === 4 ? 5 * c[3] : 0);
+      else h += 20 * Math.abs(c[0] - 1) + 5 * (c[1] + c[3] + Math.abs(c[2] - (k >= 3 ? 1 : 0)));
+      return h;
+    }
+    const rc = new Array(N), cc = new Array(D);
+    function total() {
+      let h = 0, s = 0;
+      for (let p = 0; p < N; p++) { h += rc[p].h; s += rc[p].s; }
+      for (let d = 0; d < D; d++) h += cc[d];
+      if (nightPeople.length) {
+        const avg = D / nightPeople.length;
+        for (const p of nightPeople) s += Math.max(0, Math.abs(rc[p].nights - avg) - 0.5) * 2;
+      }
+      return { h, s, v: h * 10 + s };
+    }
+    function init() {
+      for (let p = 0; p < N; p++) for (let d = 0; d < D; d++) {
+        let c = 6;
+        const st = opt.start && opt.start[p] ? CODES.indexOf(opt.start[p][d]) : -1;
+        if (st >= 0 && allowed[p][d].indexOf(st) >= 0) c = st;
+        else if (!opt.start) c = allowed[p][d][ri(allowed[p][d].length)];
+        g[p][d] = c;
+      }
+      for (let p = 0; p < N; p++) rc[p] = rowCost(p);
+      for (let d = 0; d < D; d++) cc[d] = colCost(d);
+    }
+    let best = null, bestV = Infinity, bestH = Infinity;
+    const t0 = Date.now(), limit = opt.timeMs || 6000;
+    let restart = 0;
+    while (Date.now() - t0 < limit) {
+      if (restart > 0) opt.start = (restart % 3 !== 0 && best) ? best.map((r) => r.map((c) => CODES[c])) : null;
+      init(); restart++;
+      let cur = total(), T = 2.0;
+      const iters = opt.iters || 250000;
+      for (let it = 0; it < iters; it++) {
+        if ((it & 4095) === 0) { T = 2.0 * (1 - it / iters) + 0.05; if (Date.now() - t0 > limit) break; }
+        const mv = rnd();
+        let changes;
+        if (mv < 0.45) { // set cell
+          const p = ri(N), d = ri(D), al = allowed[p][d]; const v = al[ri(al.length)];
+          if (v === g[p][d]) continue; changes = [[p, d, v]];
+        } else if (mv < 0.8) { // swap two people on same day
+          const d = ri(D), p = ri(N), q = ri(N); const a = g[p][d], b = g[q][d];
+          if (p === q || a === b || allowed[p][d].indexOf(b) < 0 || allowed[q][d].indexOf(a) < 0) continue;
+          changes = [[p, d, b], [q, d, a]];
+        } else { // swap two days within a person
+          const p = ri(N), d = ri(D), e = ri(D); const a = g[p][d], b = g[p][e];
+          if (d === e || a === b || allowed[p][d].indexOf(b) < 0 || allowed[p][e].indexOf(a) < 0) continue;
+          changes = [[p, d, b], [p, e, a]];
+        }
+        const old = changes.map(([p, d]) => g[p][d]);
+        const ps = [...new Set(changes.map((c) => c[0]))], ds = [...new Set(changes.map((c) => c[1]))];
+        const oldR = ps.map((p) => rc[p]), oldC = ds.map((d) => cc[d]);
+        for (const [p, d, v] of changes) g[p][d] = v;
+        ps.forEach((p) => { rc[p] = rowCost(p); }); ds.forEach((d) => { cc[d] = colCost(d); });
+        const nv = total();
+        const delta = nv.v - cur.v;
+        if (delta <= 0 || rnd() < Math.exp(-delta / (T * 20))) {
+          cur = nv;
+          if (nv.v < bestV) { bestV = nv.v; bestH = nv.h; best = g.map((r) => Array.from(r)); }
+          if (bestV <= (opt.lb || 2)) break;
+        } else {
+          changes.forEach(([p, d], i) => { g[p][d] = old[i]; });
+          ps.forEach((p, i) => { rc[p] = oldR[i]; }); ds.forEach((d, i) => { cc[d] = oldC[i]; });
+        }
+      }
+      if (bestV <= (opt.lb || 2) + 2) break;
+    }
+    return { schedule: best.map((r) => r.map((c) => CODES[c])), hard: bestH, soft: bestV - bestH * 10, restarts: restart, ms: Date.now() - t0 };
+  }
+  /* WISH_SOLVER_END */
+
+  const CODES = ["早番", "遅番", "超遅番", "日勤", "夜勤", "明け", "休み", "有給", "研修"];
+  const ALL = ["早番", "遅番", "超遅番", "日勤", "夜勤", "明け", "休み"];
+  const DEF_OFF = 10, MAX_TOTAL = 20, MIN_FLOOR = 3, MAX_FLOOR = 12;
+  const TIMES = { "早番": "6:45–15:45", "遅番": "10:00–19:00", "超遅番": "13:15–22:15", "日勤": "9:00–18:00", "夜勤": "22:00–翌朝7:00", "明け": "休み扱い", "休み": "", "有給": "有給休暇", "研修": "9:00–18:00（出勤）" };
+  const SHORT = { "早番": "早", "遅番": "遅", "超遅番": "超遅", "日勤": "日", "夜勤": "夜", "明け": "", "休み": "", "有給": "", "研修": "研" };
+  const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
+  const STORAGE_KEY = "kinmuhyo_v4";
+  const WT_SHORT = { none: "制限なし", day: "日勤専属", earlyLate: "早遅のみ" };
+  const MODE_LABEL = { m4: "4連勤なし（最大3連勤）", m3sel: "3連勤なし（選んだ職員のみ最大2連勤）", m5: "4連勤あり（最大4連勤）" };
+
+  function tokyoNow() { return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })); }
+  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+  function weekday(y, m, d) { return new Date(y, m - 1, d).getDay(); }
+  function isOff(c) { return c === "休み" || c === "明け" || c === "有給"; }
+  function monthKey(y, m) { return y + "-" + m; }
+  function normType(t) { return (t === "day" || t === "earlyLate" || t === "none") ? t : "none"; }
+  function canDoRole(wt, role) {
+    if (role === "休み" || role === "有給" || role === "研修") return true;
+    if (role === "明け") return wt === "none";
+    if (wt === "day") return role === "日勤";
+    if (wt === "earlyLate") return role === "早番" || role === "遅番";
+    return true;
+  }
+  function clampQ(q) { q = Math.round(Number(q)); return q >= 1 && q <= 20 ? q : DEF_OFF; }
+  let idSeq = Date.now() % 100000;
+  function newId() { return "s" + (idSeq++).toString(36) + Math.floor(Math.random() * 1e4).toString(36); }
+  function mkStaff(name, type) { return { id: newId(), name, type: type || "none", quota: DEF_OFF, no3: false }; }
+  function defaultFloor(name, n, prefix) {
+    const st = [];
+    for (let i = 0; i < n; i++) st.push(mkStaff((prefix || "職員") + (i + 1), i === 0 ? "day" : i === 1 ? "earlyLate" : "none"));
+    return { name, staff: st, months: {} };
+  }
+
+  function loadState() {
+    const now = tokyoNow();
+    const base = { v: 5, year: now.getFullYear(), month: now.getMonth() + 1, floor: 0, floors: [defaultFloor("1階", 7), defaultFloor("2階", 7, "2階職員")] };
+    try {
+      let raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("kinmuhyo_v3");
+      if (!raw) return base;
+      const data = JSON.parse(raw);
+      if (typeof data.year === "number") base.year = data.year;
+      if (typeof data.month === "number") base.month = data.month;
+      if (data.v === 5 && Array.isArray(data.floors)) {
+        base.floors = data.floors.map((f, i) => ({
+          name: f.name || (i + 1) + "階",
+          staff: (f.staff || []).map((s) => ({ id: s.id || newId(), name: s.name || "職員", type: normType(s.type), quota: clampQ(s.quota), no3: !!s.no3 })),
+          months: f.months || {}
+        }));
+        while (base.floors.length < 2) base.floors.push(defaultFloor("2階", 7, "2階職員"));
+        base.floor = data.floor === 1 || data.floor === 2 ? data.floor : 0;
+        return base;
+      }
+      // migrate v3/v4 (7 people, one floor) -> 1階
+      const f1 = base.floors[0];
+      if (Array.isArray(data.names)) f1.staff.forEach((s, i) => { if (data.names[i]) s.name = String(data.names[i]).trim() || s.name; });
+      if (Array.isArray(data.workTypes)) f1.staff.forEach((s, i) => { if (data.workTypes[i]) s.type = normType(data.workTypes[i]); });
+      const bm = Object.assign({}, data.byMonth || {});
+      if (data.schedule && data.scheduleKey) bm[data.scheduleKey] = data.schedule;
+      Object.keys(bm).forEach((k) => {
+        const rows = bm[k];
+        if (!Array.isArray(rows)) return;
+        const sched = {};
+        f1.staff.forEach((s, i) => { if (rows[i]) sched[s.id] = rows[i]; });
+        f1.months[k] = { sched, wish: {}, target: {}, mode: "m4", pattern: 1 };
+      });
+    } catch (e) { /* ignore */ }
+    return base;
+  }
+  let state = loadState();
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 5, year: state.year, month: state.month, floor: state.floor, floors: state.floors })); } catch (e) { /* ignore */ }
+  }
+
+  function D_() { return daysInMonth(state.year, state.month); }
+  function monthData(fi) {
+    const f = state.floors[fi], k = monthKey(state.year, state.month), D = D_();
+    let md = f.months[k];
+    if (!md) md = f.months[k] = { sched: {}, wish: {}, target: {}, mode: "m4", pattern: 0 };
+    md.paid = md.paid || {}; md.paidFix = md.paidFix || {}; md.trainFix = md.trainFix || {};
+    md.sched = md.sched || {}; md.wish = md.wish || {}; md.target = md.target || {}; md.mode = md.mode || "m4";
+    f.staff.forEach((s) => {
+      let r = md.sched[s.id];
+      if (!Array.isArray(r) || r.length !== D) { r = Array.from({ length: D }, (_, i) => (r && r[i]) || "休み"); md.sched[s.id] = r; }
+      if (!Array.isArray(md.wish[s.id])) md.wish[s.id] = [];
+      if (!Array.isArray(md.paidFix[s.id])) md.paidFix[s.id] = [];
+      if (!Array.isArray(md.trainFix[s.id])) md.trainFix[s.id] = [];
+      md.paidFix[s.id] = md.paidFix[s.id].filter((d) => d >= 1 && d <= D);
+      md.paid[s.id] = Math.min(10, Math.max(md.paidFix[s.id].length, Number(md.paid[s.id]) || 0));
+    });
+    return md;
+  }
+  function rowsOf(fi) { const md = monthData(fi); return state.floors[fi].staff.map((s) => md.sched[s.id]); }
+  function isWish(fi, s, d) { return monthData(fi).wish[s.id].indexOf(d + 1) >= 0; }
+  function maxWorkOf(fi, s) { const mode = monthData(fi).mode; return mode === "m5" ? 4 : (mode === "m3sel" && s.no3) ? 2 : 3; }
+
+  /** effective off target: own quota; Feb-type capacity shortage reduces default-quota staff only */
+  function offTargets(fi) {
+    const f = state.floors[fi], D = D_(), md = monthData(fi);
+    const q = f.staff.map((s) => s.quota);
+    let need = 0;
+    for (let d = 1; d <= D; d++) need += Math.max(4, Number(md.target[d]) || 4);
+    f.staff.forEach((s, i) => { if (s.type === "day") need += Math.max(0, D - q[i] - (md.paid[s.id] || 0) - md.trainFix[s.id].length); });
+    let dayExtraDays = 0; for (let d = 1; d <= D; d++) if ((Number(md.target[d]) || 0) >= 5) dayExtraDays++;
+    need -= Math.min(dayExtraDays, f.staff.filter((s) => s.type === "day").reduce((a, s) => a + D - s.quota, 0));
+    const pd = f.staff.map((s) => md.paid[s.id] || 0);
+    const tr = f.staff.map((s) => md.trainFix[s.id].length);
+    let avail = q.reduce((a, x, i) => a + D - x - pd[i] - tr[i], 0);
+    const reduced = {};
+    const cand = f.staff.map((s, i) => i).filter((i) => f.staff[i].quota === DEF_OFF && f.staff[i].type !== "day");
+    let guard = 0;
+    while (avail < need && cand.length && guard++ < 400) {
+      for (const i of cand) { if (avail >= need) break; if (q[i] > 1) { q[i]--; avail++; reduced[i] = true; } }
+    }
+    return { q, reduced, need, avail: q.reduce((a, x, i) => a + D - x - pd[i] - tr[i], 0) };
+  }
+
+  function dayAnalysis(fi, d) {
+    const rows = rowsOf(fi), c = { "早番": 0, "遅番": 0, "超遅番": 0, "日勤": 0, "夜勤": 0, "明け": 0, "休み": 0, "有給": 0, "研修": 0 };
+    rows.forEach((r) => { c[r[d]] = (c[r[d]] || 0) + 1; });
+    const working = c["早番"] + c["遅番"] + c["超遅番"] + c["日勤"] + c["夜勤"];
+    const t = Number(monthData(fi).target[d + 1]) || 0;
+    let missing = [], ok;
+    if (t) {
+      const core = t >= 4 ? ["早番", "遅番", "超遅番", "夜勤"] : t === 3 ? ["早番", "超遅番", "夜勤"] : ["早番", "夜勤"];
+      missing = core.filter((r) => c[r] < 1);
+      ok = !missing.length && working === t && c["夜勤"] === 1;
+    } else {
+      missing = ["早番", "遅番", "超遅番", "夜勤"].filter((r) => c[r] < 1);
+      ok = !missing.length && c["夜勤"] === 1 && working >= 4;
+    }
+    return { c, working, target: t, missing, ok, is4: working <= 4, is6: working >= 6 };
+  }
+  function nightRuleViolations(row) {
+    const D = row.length, msgs = [];
+    for (let i = 0; i < D; i++) {
+      if (row[i] !== "夜勤") continue;
+      let j = i; while (j + 1 < D && row[j + 1] === "夜勤") j++;
+      const len = j - i + 1;
+      if (j + 1 < D && row[j + 1] !== "明け") msgs.push((j + 2) + "日は明けが必要");
+      if (len >= 2 && j + 2 < D && row[j + 2] !== "休み" && row[j + 2] !== "有給") msgs.push((j + 3) + "日は休みが必要（連続夜勤後）");
+      i = j;
+    }
+    for (let i = 0; i < D; i++) if (row[i] === "明け" && i > 0 && row[i - 1] !== "夜勤") msgs.push((i + 1) + "日の明けの前日が夜勤でない");
+    return msgs;
+  }
+  function runs(row, off) {
+    const out = []; let st = -1;
+    for (let i = 0; i <= row.length; i++) {
+      const v = i < row.length && isOff(row[i]) === off;
+      if (v && st < 0) st = i;
+      if (!v && st >= 0) { out.push([st, i - 1]); st = -1; }
+    }
+    return out;
+  }
+  function personCheck(fi, p, offT) {
+    const s = state.floors[fi].staff[p], row = monthData(fi).sched[s.id], D = row.length;
+    const c = { "早番": 0, "遅番": 0, "超遅番": 0, "日勤": 0, "夜勤": 0, "明け": 0, "休み": 0, "有給": 0, "研修": 0 };
+    row.forEach((x) => { c[x]++; });
+    const offTotal = c["明け"] + c["休み"], maxW = maxWorkOf(fi, s);
+    const paidT = monthData(fi).paid[s.id] || 0, paidFixBad = monthData(fi).paidFix[s.id].filter((d) => row[d - 1] !== "有給");
+    const workRuns = runs(row, false).filter(([a, b]) => b - a + 1 > maxW);
+    const offRunsAll = runs(row, true).filter(([a, b]) => b - a + 1 >= 3);
+    const offRuns = offRunsAll.filter(([a, b]) => row.slice(a, b + 1).indexOf("有給") < 0);
+    const paidRuns = offRunsAll.filter(([a, b]) => row.slice(a, b + 1).indexOf("有給") >= 0);
+    const wishBad = monthData(fi).wish[s.id].filter((d) => d <= D && !isOff(row[d - 1]));
+    const typeBad = []; row.forEach((x, d) => { if (!isOff(x) && !canDoRole(s.type, x)) typeBad.push(d + 1); });
+    return { s, paidRuns, c, offTotal, paid: c["有給"], paidT, paidFixBad, target: offT, workRuns, offRuns, maxW, wishBad, typeBad, night: nightRuleViolations(row),
+      maxWork: Math.max(0, ...runs(row, false).map(([a, b]) => b - a + 1)), maxOff: Math.max(0, ...runs(row, true).map(([a, b]) => b - a + 1)) };
+  }
+  function looseFlags(q, D, maxW) {
+    const W = D - q;
+    return { off: q > 2 * (W + 1), work: W > maxW * (q + 1) };
+  }
+
+  /* ---------- auto-create ---------- */
+  function sameSched(a, b) { return a && b && a.length === b.length && a.every((r, i) => r.join() === b[i].join()); }
+  function autoFill(fi) {
+    const f = state.floors[fi], md = monthData(fi), D = D_(), N = f.staff.length;
+    const prev = rowsOf(fi).map((r) => r.slice());
+    const wt = f.staff.map((s) => s.type);
+    const hasWish = f.staff.some((s) => md.wish[s.id].length || md.paid[s.id] > 0 || md.trainFix[s.id].length), hasTarget = Object.keys(md.target).some((k) => md.target[k]);
+    const def = f.staff.every((s) => s.quota === DEF_OFF) && md.mode === "m4";
+    if (!md.pattern && fi === 0 && !hasWish && !hasTarget && def && defaultTypesMatch(wt)) {
+      const pre = decodePrecomputed(state.year + "-" + String(state.month).padStart(2, "0"));
+      if (pre && pre[0].length === D) {
+        f.staff.forEach((s, i) => { md.sched[s.id] = pre[i]; });
+        md.pattern = 1; saveState(); return { ok: true, pattern: 1 };
+      }
+    }
+    const ot = offTargets(fi);
+    const wish = f.staff.map((s) => { const a = Array(D).fill(false); md.wish[s.id].forEach((d) => { if (d >= 1 && d <= D) a[d - 1] = true; }); return a; });
+    const paidFix = f.staff.map((s) => { const a = Array(D).fill(false); md.paidFix[s.id].forEach((d) => { a[d - 1] = true; }); return a; });
+    const trainFix = f.staff.map((s) => { const a = Array(D).fill(false); md.trainFix[s.id].forEach((d) => { if (d >= 1 && d <= D) a[d - 1] = true; }); return a; });
+    const target = Array(D).fill(0); for (let d = 1; d <= D; d++) target[d - 1] = Number(md.target[d]) || 0;
+    const maxWork = f.staff.map((s) => maxWorkOf(fi, s));
+    const lf = ot.q.map((q, i) => looseFlags(q + (md.paid[f.staff[i].id] || 0), D, maxWork[i]));
+    // carry-in: last night streak of previous month
+    const pm = state.month === 1 ? { y: state.year - 1, m: 12 } : { y: state.year, m: state.month - 1 };
+    const pmd = f.months[monthKey(pm.y, pm.m)];
+    const prevNight = f.staff.map((s) => { const r = pmd && pmd.sched && pmd.sched[s.id]; if (!r) return 0; let n = 0; for (let i = r.length - 1; i >= 0 && r[i] === "夜勤"; i--) n++; return n; });
+    let res = null;
+    for (let tries = 0; tries < 4; tries++) {
+      res = wishSolve({ D, wt, wish, target, paidFix, trainFix, paidT: f.staff.map((s) => md.paid[s.id] || 0), offTarget: ot.q, maxWork, prevNight,
+        looseOff: lf.map((x) => x.off), looseWork: lf.map((x) => x.work),
+        seed: (Date.now() ^ Math.floor(Math.random() * 4294967296)) >>> 0, timeMs: 3500, iters: 200000 });
+      if (!sameSched(res.schedule, prev)) break;
+    }
+    f.staff.forEach((s, i) => { md.sched[s.id] = res.schedule[i]; });
+    md.pattern = (md.pattern || 0) + 1;
+    saveState();
+    return { ok: res.hard === 0, pattern: md.pattern, res };
+  }
+
+  /** convert placed 休み to 有給 until each person's 有給 count is reached (busy days first, spread out) */
+  function placePaid(fi) {
+    const f = state.floors[fi], md = monthData(fi), D = D_();
+    const work = []; for (let d = 0; d < D; d++) work.push(dayAnalysis(fi, d).working);
+    f.staff.forEach((s) => {
+      const row = md.sched[s.id];
+      md.paidFix[s.id].forEach((d) => { row[d - 1] = "有給"; });
+      let have = row.filter((x) => x === "有給").length;
+      const need = md.paid[s.id] || 0;
+      while (have > need) { const i = row.lastIndexOf("有給"); if (i < 0 || md.paidFix[s.id].indexOf(i + 1) >= 0) break; row[i] = "休み"; have--; }
+      const cand = [];
+      for (let d = 0; d < D; d++) if (row[d] === "休み" && md.wish[s.id].indexOf(d + 1) < 0) cand.push(d);
+      while (have < need && cand.length) {
+        let best = -1, bs = -1e9;
+        cand.forEach((d, k) => {
+          let near = 99; row.forEach((x, e) => { if (x === "有給") near = Math.min(near, Math.abs(e - d)); });
+          const sc = work[d] * 10 + Math.min(near, 10) + Math.random();
+          if (sc > bs) { bs = sc; best = k; }
+        });
+        row[cand[best]] = "有給"; cand.splice(best, 1); have++;
+      }
+    });
+  }
+
+  /* ---------- UI ---------- */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function showToast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("show"); clearTimeout(showToast._t); showToast._t = setTimeout(() => el.classList.remove("show"), 2600); }
+  function viewFloors() { return state.floor === 2 ? [0, 1] : [state.floor]; }
+  function editFloor() { return state.floor === 2 ? 0 : state.floor; }
+  function totalStaff() { return state.floors.reduce((a, f) => a + f.staff.length, 0); }
+
+  function renderTabs() {
+    document.querySelectorAll(".floor-tab[data-f]").forEach((b) => b.classList.toggle("active", Number(b.dataset.f) === state.floor));
+    const fi = editFloor();
+    document.querySelectorAll(".edit-floor-name").forEach((el) => { el.textContent = state.floors[fi].name; });
+    $("allHint").style.display = state.floor === 2 ? "" : "none";
+  }
+
+  function renderStaff() {
+    const fi = editFloor(), f = state.floors[fi], box = $("staffNames");
+    box.innerHTML = "";
+    f.staff.forEach((s, i) => {
+      const div = document.createElement("div");
+      div.className = "staff-item";
+      let qopts = ""; for (let q = 1; q <= 20; q++) qopts += "<option value=\"" + q + "\"" + (q === s.quota ? " selected" : "") + ">休み" + q + "日" + "</option>";
+      const mdS = monthData(fi), pdN = mdS.paid[s.id] || 0, wN = mdS.wish[s.id].length;
+      let popts = ""; for (let q = 0; q <= 10; q++) popts += "<option value=\"" + q + "\"" + (q === pdN ? " selected" : "") + ">有給" + q + "日</option>";
+      div.innerHTML = "<span class=\"num\">" + (i + 1) + "</span><div class=\"fields\">" +
+        "<input type=\"text\" maxlength=\"12\" value=\"" + esc(s.name) + "\" aria-label=\"名前\">" +
+        "<div class=\"two\"><select class=\"wt\" aria-label=\"勤務タイプ\">" +
+        ["none", "day", "earlyLate"].map((t) => "<option value=\"" + t + "\"" + (s.type === t ? " selected" : "") + ">" + { none: "制限なし", day: "日勤専属", earlyLate: "早番・遅番のみ" }[t] + "</option>").join("") +
+        "</select></div><div class=\"two\"><select class=\"qt\" aria-label=\"休みの日数\">" + qopts + "</select><select class=\"pd\" aria-label=\"有給の日数（この月）\">" + popts + "</select></div>" +
+        "<div class=\"offinfo\">休み " + s.quota + "日（うち希望休 " + wN + "日）、有給 " + pdN + "日</div>" +
+        "<div class=\"two\"><label class=\"chk\"><input type=\"checkbox\" class=\"no3\"" + (s.no3 ? " checked" : "") + "> 3連勤なし</label>" +
+        "<button type=\"button\" class=\"btn btn-ghost del\">この職員を削除</button></div></div>";
+      div.querySelector("input[type=text]").addEventListener("change", (e) => { s.name = e.target.value.trim() || ("職員" + (i + 1)); saveState(); renderAll(); });
+      div.querySelector(".wt").addEventListener("change", (e) => { s.type = normType(e.target.value); saveState(); renderAll(); });
+      div.querySelector(".qt").addEventListener("change", (e) => { s.quota = clampQ(e.target.value); saveState(); renderAll(); });
+      div.querySelector(".pd").addEventListener("change", (e) => {
+        const v = Math.max(0, Math.min(10, Number(e.target.value) || 0)), fx = mdS.paidFix[s.id];
+        if (v < fx.length) { showToast("日にちを決めた有給が" + fx.length + "日あります。先に外してください"); e.target.value = mdS.paid[s.id]; return; }
+        mdS.paid[s.id] = v; saveState(); renderAll(); });
+      div.querySelector(".no3").addEventListener("change", (e) => { s.no3 = e.target.checked; saveState(); renderAll(); });
+      div.querySelector(".del").addEventListener("click", () => {
+        if (f.staff.length <= MIN_FLOOR) { showToast("1つの階は" + MIN_FLOOR + "人以上必要です"); return; }
+        if (!confirm(s.name + " を削除しますか？")) return;
+        f.staff.splice(i, 1); saveState(); renderAll();
+      });
+      box.appendChild(div);
+    });
+    $("staffCount").textContent = f.name + " " + f.staff.length + "人／全体 " + totalStaff() + "人（最大" + MAX_TOTAL + "人）";
+    const md = monthData(fi);
+    $("modeSel").value = md.mode;
+    $("no3Row").style.display = md.mode === "m3sel" ? "" : "none";
+  }
+
+  function renderWish() {
+    const fi = editFloor(), f = state.floors[fi], md = monthData(fi), sel = $("wishStaff"), D = D_();
+    const cur = sel.value;
+    sel.innerHTML = f.staff.map((s) => "<option value=\"" + s.id + "\">" + esc(s.name) + "</option>").join("");
+    if (f.staff.some((s) => s.id === cur)) sel.value = cur;
+    const s = f.staff.find((x) => x.id === sel.value) || f.staff[0];
+    const pm = renderWish.mode || "wish";
+    document.querySelectorAll(".wmode").forEach((b) => b.classList.toggle("active", b.dataset.m === pm));
+    const grid = $("wishDays"); grid.innerHTML = "";
+    const first = weekday(state.year, state.month, 1);
+    WEEK.forEach((w, i) => { const h = document.createElement("div"); h.className = "wd" + (i === 0 ? " sun" : i === 6 ? " sat" : ""); h.textContent = w; grid.appendChild(h); });
+    for (let i = 0; i < first; i++) grid.appendChild(document.createElement("div"));
+    for (let d = 1; d <= D; d++) {
+      const b = document.createElement("button"); b.type = "button";
+      const on = md.wish[s.id].indexOf(d) >= 0, pon = md.paidFix[s.id].indexOf(d) >= 0, ton = md.trainFix[s.id].indexOf(d) >= 0;
+      b.className = "wish-day" + (on ? " on" : "") + (pon ? " paid" : "") + (ton ? " train" : ""); b.textContent = d;
+      b.addEventListener("click", () => {
+        if (pm === "paid") togglePaid(fi, s, d - 1); else if (pm === "train") toggleTrain(fi, s, d - 1); else toggleWish(fi, s, d - 1);
+        saveState(); renderAll();
+      });
+      grid.appendChild(b);
+    }
+    const list = f.staff.filter((x) => md.wish[x.id].length || md.paid[x.id] || md.trainFix[x.id].length).map((x) => esc(x.name) + "：" +
+      (md.trainFix[x.id].length ? "研修 " + md.trainFix[x.id].join("・") + "日 " : "") +
+      (md.wish[x.id].length ? "希望休 " + md.wish[x.id].join("・") + "日" : "") +
+      (md.paid[x.id] ? (md.wish[x.id].length ? "／" : "") + "有給 " + md.paid[x.id] + "日" + (md.paidFix[x.id].length ? "（" + md.paidFix[x.id].join("・") + "日に決定" + (md.paid[x.id] > md.paidFix[x.id].length ? "、残りは自動" : "") + "）" : "（日にちは自動）") : ""));
+    $("wishList").innerHTML = list.length ? list.join("<br>") : "まだ希望休・有給・研修はありません";
+  }
+
+  function toggleWish(fi, s, d) {
+    const md = monthData(fi), a = md.wish[s.id], k = a.indexOf(d + 1);
+    if (k >= 0) { a.splice(k, 1); return; }
+    dropFix(md, s, d, "wish");
+    a.push(d + 1); a.sort((x, y) => x - y);
+    if (!isOff(md.sched[s.id][d]) || md.sched[s.id][d] === "有給") md.sched[s.id][d] = "休み";
+  }
+  function dropFix(md, s, d, except) {
+    ["wish", "paidFix", "trainFix"].forEach((k) => { if (k === except) return; const a = md[k][s.id], i = a.indexOf(d + 1); if (i >= 0) a.splice(i, 1); });
+  }
+  function toggleTrain(fi, s, d) {
+    const md = monthData(fi), a = md.trainFix[s.id], k = a.indexOf(d + 1);
+    if (k >= 0) { a.splice(k, 1); if (md.sched[s.id][d] === "研修") md.sched[s.id][d] = "休み"; return; }
+    dropFix(md, s, d, "trainFix");
+    a.push(d + 1); a.sort((x, y) => x - y);
+    md.sched[s.id][d] = "研修";
+  }
+  function togglePaid(fi, s, d) {
+    const md = monthData(fi), a = md.paidFix[s.id], k = a.indexOf(d + 1);
+    if (k >= 0) { a.splice(k, 1); if (md.sched[s.id][d] === "有給") md.sched[s.id][d] = "休み"; return; }
+    dropFix(md, s, d, "paidFix");
+    a.push(d + 1); a.sort((x, y) => x - y);
+    if ((md.paid[s.id] || 0) < a.length) md.paid[s.id] = a.length;
+    md.sched[s.id][d] = "有給";
+  }
+  function rowH(n) { return Math.max(7, Math.min(14, Math.floor(150 / (n + 0.5)))); }
+  function renderCalendar() {
+    const D = D_(), wrap = $("calendars");
+    let html = "";
+    viewFloors().forEach((fi) => {
+      const f = state.floors[fi], md = monthData(fi), ot = offTargets(fi);
+      let head = "<tr><th class=\"staff-col\">職員</th>";
+      for (let d = 1; d <= D; d++) { const w = weekday(state.year, state.month, d); head += "<th class=\"day-h " + (w === 0 ? "sun" : w === 6 ? "sat" : "") + "\">" + d + "<br>" + WEEK[w] + "</th>"; }
+      head += "</tr>";
+      let body = "";
+      f.staff.forEach((s, p) => {
+        const q = ot.q[p];
+        const wN = md.wish[s.id].length, pN = md.paid[s.id] || 0;
+        body += "<tr><td class=\"staff-col\">" + esc(s.name) + "<span class=\"wt\">" + WT_SHORT[s.type] + "<br>休" + q + (wN ? "(希" + wN + ")" : "") + (pN ? " 有" + pN : "") + (md.trainFix[s.id].length ? " 研" + md.trainFix[s.id].length : "") + "</span></td>";
+        let n = 0, pn = 0;
+        md.sched[s.id].forEach((sh, d) => {
+          const wsh = md.wish[s.id].indexOf(d + 1) >= 0;
+          let label = SHORT[sh] || "";
+          if (sh === "有給") { pn++; label = "<span class=\"paidn" + (pn > pN ? " over" : "") + "\">" + pn + "</span>有"; }
+          else if (isOff(sh)) { n++; label = "<span class=\"offn" + (n > q ? " over" : "") + "\">" + n + "</span>"; }
+          if (wsh) label += "<span class=\"wishm" + (isOff(sh) ? "" : " bad") + "\">希</span>";
+          body += "<td><button type=\"button\" class=\"shift-btn s-" + sh + (wsh ? " wish" : "") + "\" data-f=\"" + fi + "\" data-p=\"" + p + "\" data-d=\"" + d + "\">" + label + "</button></td>";
+        });
+        body += "</tr>";
+      });
+      body += "<tr class=\"taisei-row\"><td class=\"staff-col\">体制<span class=\"wt\">タップで人数変更</span></td>";
+      for (let d = 0; d < D; d++) {
+        const a = dayAnalysis(fi, d);
+        const cls = !a.ok ? "tng" : a.is6 ? "t6" : a.is4 ? "t4" : "t5";
+        let txt = (a.ok ? "○" : "！") + a.working + "人";
+        if (a.target) txt = "<span class=\"tgt\">目標" + a.target + "</span><br>" + txt;
+        if (a.missing.length) txt += "<br>不足" + a.missing.map((r) => SHORT[r]).join(",");
+        body += "<td class=\"" + cls + (a.target ? " has-t" : "") + "\"><button type=\"button\" class=\"day-meta\" data-f=\"" + fi + "\" data-d=\"" + d + "\">" + txt + "</button></td>";
+      }
+      body += "</tr>";
+      html += "<section class=\"card floor-cal\" style=\"--rowh:" + rowH(f.staff.length) + "mm\"><h2>" + esc(f.name) + " 勤務表 " + state.year + "年" + state.month + "月" +
+        (md.pattern ? " <small class=\"pat\">パターン" + md.pattern + "</small>" : "") + " <small class=\"pat\">" + MODE_LABEL[md.mode] + "</small></h2>" +
+        "<div class=\"cal-wrap\"><table class=\"cal\"><thead>" + head + "</thead><tbody>" + body + "</tbody></table></div></section>";
+    });
+    wrap.innerHTML = html;
+    wrap.querySelectorAll(".shift-btn").forEach((b) => b.addEventListener("click", () => openPicker(+b.dataset.f, +b.dataset.p, +b.dataset.d)));
+    wrap.querySelectorAll("button.day-meta").forEach((b) => b.addEventListener("click", () => openTarget(+b.dataset.f, +b.dataset.d)));
+  }
+
+  function openSheet(title, buttons) {
+    $("pickerTitle").textContent = title;
+    const grid = $("pickerGrid"); grid.innerHTML = "";
+    buttons.forEach((bt) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn " + (bt.cls || "");
+      b.innerHTML = bt.html; b.addEventListener("click", () => { bt.fn(); closePicker(); saveState(); renderAll(); });
+      grid.appendChild(b);
+    });
+    $("picker").classList.add("open"); $("picker").setAttribute("aria-hidden", "false");
+  }
+  function closePicker() { $("picker").classList.remove("open"); $("picker").setAttribute("aria-hidden", "true"); }
+  function openPicker(fi, p, d) {
+    const s = state.floors[fi].staff[p], md = monthData(fi), wsh = md.wish[s.id].indexOf(d + 1) >= 0;
+    const pfx = md.paidFix[s.id].indexOf(d + 1) >= 0;
+    const btns = ALL.filter((r) => canDoRole(s.type, r)).map((r) => ({ cls: "s-" + r + " pick", html: r + (TIMES[r] ? "<small>" + TIMES[r] + "</small>" : ""), fn: () => {
+      md.sched[s.id][d] = r; ["paidFix", "trainFix"].forEach((kk) => { const k = md[kk][s.id].indexOf(d + 1); if (k >= 0) md[kk][s.id].splice(k, 1); }); } }));
+    btns.push({ cls: "wish-btn" + (wsh ? " on" : ""), html: wsh ? "希望休を外す" : "希望休にする<small>この日を必ず休みに</small>", fn: () => toggleWish(fi, s, d) });
+    const tfx = md.trainFix[s.id].indexOf(d + 1) >= 0;
+    btns.push({ cls: "train-btn" + (tfx ? " on" : ""), html: tfx ? "研修を外す" : "研修にする<small>出勤扱い・役割には入らない</small>", fn: () => toggleTrain(fi, s, d) });
+    btns.push({ cls: "paid-btn" + (pfx ? " on" : ""), html: pfx ? "有給を外す" : "有給にする<small>この日を有給休暇に</small>", fn: () => togglePaid(fi, s, d) });
+    openSheet(s.name + " / " + state.month + "/" + (d + 1), btns);
+  }
+  function openTarget(fi, d) {
+    const md = monthData(fi), cur = Number(md.target[d + 1]) || 0;
+    const btns = [{ cls: "btn-secondary" + (cur ? "" : " on"), html: "標準<small>5人（足りない日は4人）</small>", fn: () => { delete md.target[d + 1]; } }];
+    [3, 4, 5, 6, 7, 8].forEach((k) => btns.push({ cls: "btn-ghost" + (cur === k ? " on" : ""), html: k + "人" + (k >= 6 ? "<small>行事など増員</small>" : k <= 4 ? "<small>減らす</small>" : ""), fn: () => { md.target[d + 1] = k; } }));
+    openSheet(state.floors[fi].name + " " + state.month + "/" + (d + 1) + " の必要人数", btns);
+  }
+
+  function renderSummary() {
+    const D = D_(); let html = "";
+    viewFloors().forEach((fi) => {
+      const f = state.floors[fi], md = monthData(fi), ot = offTargets(fi);
+      html += "<h3 class=\"sum-h\">" + esc(f.name) + "（" + f.staff.length + "人）</h3><div class=\"cal-wrap\"><table class=\"summary-table\"><thead><tr><th>職員</th><th>タイプ</th><th>休/目標</th><th>うち希望休</th><th>有給/目標</th><th>明</th><th>休</th><th>早</th><th>遅</th><th>超</th><th>日</th><th>夜</th><th>研修</th><th>勤務日数</th><th>最長連勤</th><th>最長連休</th></tr></thead><tbody>";
+      const warn = [], good = [];
+      const W = { off: [], work: [], offrun: [], night: [], type: [], wish: [], loose: [], paid: [], paidFix: [], paidRun: [] };
+      f.staff.forEach((s, p) => {
+        const k = personCheck(fi, p, ot.q[p]);
+        const lf = looseFlags(ot.q[p] + k.paidT, D, k.maxW);
+        if (k.offTotal !== k.target) W.off.push(s.name + "（" + k.offTotal + "/" + k.target + "）");
+        k.workRuns.forEach(([a, b]) => W.work.push(s.name + " " + (a + 1) + "〜" + (b + 1) + "日（" + (b - a + 1) + "連勤、上限" + k.maxW + "）"));
+        k.offRuns.forEach(([a, b]) => W.offrun.push(s.name + " " + (a + 1) + "〜" + (b + 1) + "日（" + (b - a + 1) + "連休）"));
+        if (lf.off) W.loose.push(s.name + "は休み" + k.target + "日のため3連休以上を避けられません（最小限にしています）");
+        if (lf.work) W.loose.push(s.name + "は休み" + k.target + "日のため連勤上限を守れません（最小限にしています）");
+        if (k.night.length) W.night.push(s.name + "：" + k.night.join("、"));
+        if (k.typeBad.length) W.type.push(s.name + "：" + k.typeBad.join("・") + "日");
+        if (k.wishBad.length) W.wish.push(s.name + "：" + k.wishBad.join("・") + "日");
+        if (k.paid !== k.paidT) W.paid.push(s.name + "（" + k.paid + "/" + k.paidT + "）");
+        const tb = md.trainFix[s.id].filter((d) => k.s && monthData(fi).sched[s.id][d - 1] !== "研修");
+        if (tb.length) W.paidFix.push(s.name + "：研修 " + tb.join("・") + "日");
+        if (k.paidFixBad.length) W.paidFix.push(s.name + "：" + k.paidFixBad.join("・") + "日");
+        k.paidRuns.forEach(([a, b]) => W.paidRun.push(s.name + " " + (a + 1) + "〜" + (b + 1) + "日"));
+        html += "<tr><td class=\"name\">" + esc(s.name) + "</td><td>" + WT_SHORT[s.type] + (k.maxW === 2 ? "<br>3連勤なし" : "") + "</td><td class=\"" + (k.offTotal !== k.target ? "bad" : "") + "\">" + k.offTotal + "/" + k.target + "</td><td>" + md.wish[s.id].length + "</td><td class=\"" + (k.paid !== k.paidT ? "bad" : "") + "\">" + k.paid + "/" + k.paidT + "</td><td>" + k.c["明け"] + "</td><td>" + k.c["休み"] + "</td><td>" + k.c["早番"] + "</td><td>" + k.c["遅番"] + "</td><td>" + k.c["超遅番"] + "</td><td>" + k.c["日勤"] + "</td><td>" + k.c["夜勤"] + "</td><td>" + k.c["研修"] + "</td><td>" + (D - k.offTotal - k.paid) + "</td><td class=\"" + (k.workRuns.length ? "bad" : "") + "\">" + k.maxWork + "</td><td class=\"" + (k.offRuns.length ? "bad" : "") + "\">" + k.maxOff + "</td></tr>";
+      });
+      html += "</tbody></table></div>";
+      const bad = [], six = [], four = [], tgt = [];
+      for (let d = 0; d < D; d++) { const a = dayAnalysis(fi, d); if (!a.ok) bad.push(d + 1); if (a.is6) six.push(d + 1); if (a.is4) four.push(d + 1); if (a.target && a.working !== a.target) tgt.push((d + 1) + "日（目標" + a.target + "人→" + a.working + "人）"); }
+      const line = (ok, okTxt, ngTxt, list) => html += ok ? "<p class=\"okline\">✓ " + okTxt + "</p>" : "<p class=\"ngline\">⚠ " + ngTxt + esc(list.join("、")) + "</p>";
+      if (Object.keys(ot.reduced).length) html += "<p class=\"ngline\">⚠ この月は日数と人数の関係で、標準(10日)の人の休みを" + Object.keys(ot.reduced).map((i) => esc(f.staff[i].name) + "=" + ot.q[i] + "日").join("、") + "にしています（必要な勤務" + ot.need + "人日に対し、休み通りだと足りないため）。</p>";
+      line(!W.wish.length, "希望休はすべて休みになっています", "希望休なのに出勤: ", W.wish);
+      line(!W.off.length, "全員の休みが目標日数どおりです（有給は別に数えます）", "休みの日数が目標と違う人: ", W.off);
+      line(!W.paid.length, "有給はすべて設定どおりの日数です", "有給の日数が設定と違う人: ", W.paid);
+      if (W.paidFix.length) html += "<p class=\"ngline\">⚠ 有給・研修に決めた日がそうなっていません: " + esc(W.paidFix.join("、")) + "</p>";
+      if (W.paidRun.length) html += "<p class=\"hint\">ℹ 有給とつながって3日以上の連休になっている所（問題ではありません）: " + esc(W.paidRun.join("、")) + "</p>";
+      line(!W.work.length, "連勤の上限を守っています（" + MODE_LABEL[md.mode] + "）", "連勤オーバー: ", W.work);
+      line(!W.offrun.length, "連休は2日以内です", "3連休以上: ", W.offrun);
+      if (W.loose.length) html += "<p class=\"ngline\">⚠ " + esc(W.loose.join("／")) + "</p>";
+      line(!W.night.length, "夜勤の明け・連休ルールOK", "夜勤ルール: ", W.night);
+      line(!W.type.length, "勤務タイプの制限OK", "勤務タイプ違反: ", W.type);
+      line(!tgt.length, "必要人数を変えた日はすべて目標どおりです", "必要人数どおりでない日: ", tgt);
+      line(!bad.length, "全日、必要な役割がそろっています", "役割不足・人数違いの日: ", bad.map((d) => d + "日"));
+      html += "<p class=\"hint\">4人の日: " + (four.join("・") || "なし") + "／6人以上の日: " + (six.join("・") || "なし") + "</p>";
+    });
+    $("summary").innerHTML = html;
+  }
+
+  function initYearMonth() {
+    const ySel = $("year"), mSel = $("month"), y0 = tokyoNow().getFullYear();
+    ySel.innerHTML = ""; for (let y = y0 - 2; y <= y0 + 3; y++) ySel.innerHTML += "<option value=\"" + y + "\"" + (y === state.year ? " selected" : "") + ">" + y + "年</option>";
+    mSel.innerHTML = ""; for (let m = 1; m <= 12; m++) mSel.innerHTML += "<option value=\"" + m + "\"" + (m === state.month ? " selected" : "") + ">" + m + "月</option>";
+    ySel.addEventListener("change", () => { state.year = +ySel.value; saveState(); renderAll(); });
+    mSel.addEventListener("change", () => { state.month = +mSel.value; saveState(); renderAll(); });
+  }
+  function renderAll() { renderTabs(); renderStaff(); renderWish(); renderCalendar(); renderSummary(); }
+
+  function toText() {
+    const D = D_(), lines = [];
+    viewFloors().forEach((fi) => {
+      const f = state.floors[fi], md = monthData(fi);
+      lines.push("勤務表 " + f.name + " " + state.year + "年" + state.month + "月");
+      let h = "日付"; for (let d = 1; d <= D; d++) h += "\t" + d + WEEK[weekday(state.year, state.month, d)]; lines.push(h);
+      f.staff.forEach((s) => lines.push(s.name + "\t" + md.sched[s.id].map((c, d) => (c === "明け" ? "明" : c === "休み" ? "休" : c === "有給" ? "有" : c === "研修" ? "研" : SHORT[c]) + (md.wish[s.id].indexOf(d + 1) >= 0 ? "(希)" : "")).join("\t")));
+      lines.push("");
+    });
+    return lines.join("\n");
+  }
+
+  document.querySelectorAll(".floor-tab[data-f]").forEach((b) => b.addEventListener("click", () => { state.floor = +b.dataset.f; saveState(); renderAll(); }));
+  $("wishStaff").addEventListener("change", renderWish);
+  document.querySelectorAll(".wmode").forEach((b) => b.addEventListener("click", () => { renderWish.mode = b.dataset.m; renderWish(); }));
+  $("modeSel").addEventListener("change", (e) => { monthData(editFloor()).mode = e.target.value; saveState(); renderAll(); });
+  $("btnAll3").addEventListener("click", () => { const f = state.floors[editFloor()]; const on = !f.staff.every((s) => s.no3); f.staff.forEach((s) => { s.no3 = on; }); saveState(); renderAll(); });
+  $("btnAddStaff").addEventListener("click", () => {
+    const f = state.floors[editFloor()];
+    if (totalStaff() >= MAX_TOTAL) { showToast("全体で" + MAX_TOTAL + "人までです"); return; }
+    if (f.staff.length >= MAX_FLOOR) { showToast("1つの階は" + MAX_FLOOR + "人までです"); return; }
+    f.staff.push(mkStaff((editFloor() ? "2階職員" : "職員") + (f.staff.length + 1), "none")); saveState(); renderAll();
+  });
+  function runAuto() {
+    const floors = viewFloors(); const msgs = [];
+    floors.forEach((fi) => { const r = autoFill(fi); msgs.push(state.floors[fi].name + " パターン" + r.pattern + (r.ok ? "" : "（一部ルールを守れていません。集計の⚠を確認してください）")); });
+    renderAll(); showToast(msgs.join("／"));
+  }
+  $("btnAuto").addEventListener("click", () => { showToast("作成中です…（数秒かかります）"); setTimeout(runAuto, 60); });
+  $("btnPrint").addEventListener("click", () => window.print());
+  $("btnCopy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(toText()); showToast("コピーしました"); } catch (e) { showToast("コピーできませんでした"); } });
+  $("btnClear").addEventListener("click", () => {
+    if (!confirm("表示中の階のこの月の勤務表を、すべて休みに戻しますか？（希望休・人数設定は残ります）")) return;
+    viewFloors().forEach((fi) => { const md = monthData(fi); Object.keys(md.sched).forEach((k) => { md.sched[k] = md.sched[k].map(() => "休み"); }); md.pattern = 0; });
+    saveState(); renderAll();
+  });
+  $("btnSettings").addEventListener("click", () => { const on = document.body.classList.toggle("show-settings"); $("btnSettings").setAttribute("aria-expanded", on ? "true" : "false"); $("btnSettings").textContent = on ? "⚙ 閉じる" : "⚙ 設定"; });
+  $("pickerCancel").addEventListener("click", closePicker);
+  $("picker").addEventListener("click", (e) => { if (e.target.id === "picker") closePicker(); });
+
+  window.__kinmuhyo = { state, autoFill, monthData, rowsOf, dayAnalysis, personCheck, offTargets, saveState, renderAll, daysInMonth, isOff, mkStaff, defaultFloor, nightRuleViolations, maxWorkOf };
+  initYearMonth();
+  renderAll();
+
+})();
+</script>
+</body>
+</html>
