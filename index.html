@@ -346,6 +346,35 @@
   .train-btn { background: #ffd0b5; color: #8a2b00; border: 2px solid #d84315 !important; }
   .offinfo { font-size: 0.85rem; font-weight: 600; color: #3f4f49; }
   @media print { .floor-cal .shift-btn.s-有給, .floor-cal .shift-btn.s-研修 { font-size: 11pt; } .paidn { font-size: 6pt; } }
+  /* v5.3 event-day labels */
+  table.cal th.day-h.has-ev { background: #ffd54f !important; color: #3e2723; box-shadow: inset 0 0 0 3px #e65100; }
+  .ev-lab { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+    margin-top: 3px; padding: 2px 1px; border-radius: 4px; background: #fff; color: #bf360c;
+    font-size: 0.82rem; font-weight: 800; line-height: 1.15; word-break: break-all; white-space: normal; max-width: 3.3em; margin-left: auto; margin-right: auto; }
+  .ev-tag { max-width: 3.6em; margin: 0 auto; color: #bf360c; font-weight: 800; font-size: 0.78rem; line-height: 1.15; word-break: break-all;
+    overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .ev-box { background: #fff8e1; border: 2px solid #ffb300; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  .ev-box label { display: block; font-weight: 800; font-size: 1rem; margin-bottom: 6px; color: #3e2723; }
+  .ev-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ev-row input { flex: 1 1 140px; min-width: 0; min-height: 50px; font-size: 1.15rem; font-weight: 700; font-family: inherit;
+    padding: 6px 10px; border: 2px solid #8d6e63; border-radius: 8px; }
+  .ev-row .btn { min-height: 50px; font-size: 1rem; font-weight: 800; padding: 6px 12px; width: auto; flex: 0 0 auto; }
+  @media (max-width: 480px) { .ev-row .btn { flex: 1 1 40%; } }
+  .ev-note { font-size: 0.8rem; color: #5d4037; margin: 6px 0 0; }
+  .evh { color: #bf360c; font-weight: 800; font-size: 0.95rem; background: #fff8e1; border-radius: 6px; padding: 1px 6px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .evline { font-size: 1rem; font-weight: 800; color: #bf360c; background: #fff8e1; border-left: 5px solid #ffb300; padding: 6px 10px; margin: 6px 0; }
+  @media screen and (orientation: landscape) and (max-height: 600px) {
+    .ev-box { padding: 6px 8px; margin-bottom: 6px; } .ev-note { display: none; }
+    .ev-row input, .ev-row .btn { min-height: 44px; }
+  }
+  @media print {
+    table.cal th.day-h.has-ev { background: #ffd54f !important; color: #000 !important; box-shadow: inset 0 0 0 2px #e65100;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .ev-lab { font-size: 7.5pt; margin-top: 1px; padding: 0; -webkit-line-clamp: 2; color: #bf360c;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .ev-tag { font-size: 7pt; }
+    .evline { font-size: 9pt; padding: 2px 6px; }
+  }
 </style>
 </head>
 <body>
@@ -432,6 +461,7 @@
   <div class="overlay no-print" id="picker" aria-hidden="true">
     <div class="sheet" role="dialog" aria-labelledby="pickerTitle">
       <h3 id="pickerTitle">選択</h3>
+      <div id="pickerExtra"></div>
       <div class="sheet-grid" id="pickerGrid"></div>
       <button type="button" class="btn btn-ghost sheet-cancel" id="pickerCancel">キャンセル</button>
     </div>
@@ -658,7 +688,7 @@
     let md = f.months[k];
     if (!md) md = f.months[k] = { sched: {}, wish: {}, target: {}, mode: "m4", pattern: 0 };
     md.paid = md.paid || {}; md.paidFix = md.paidFix || {}; md.trainFix = md.trainFix || {};
-    md.sched = md.sched || {}; md.wish = md.wish || {}; md.target = md.target || {}; md.mode = md.mode || "m4";
+    md.sched = md.sched || {}; md.wish = md.wish || {}; md.target = md.target || {}; md.label = md.label || {}; md.mode = md.mode || "m4";
     f.staff.forEach((s) => {
       let r = md.sched[s.id];
       if (!Array.isArray(r) || r.length !== D) { r = Array.from({ length: D }, (_, i) => (r && r[i]) || "休み"); md.sched[s.id] = r; }
@@ -930,7 +960,7 @@
     viewFloors().forEach((fi) => {
       const f = state.floors[fi], md = monthData(fi), ot = offTargets(fi);
       let head = "<tr><th class=\"staff-col\">職員</th>";
-      for (let d = 1; d <= D; d++) { const w = weekday(state.year, state.month, d); head += "<th class=\"day-h " + (w === 0 ? "sun" : w === 6 ? "sat" : "") + "\">" + d + "<br>" + WEEK[w] + "</th>"; }
+      for (let d = 1; d <= D; d++) { const w = weekday(state.year, state.month, d), lb = md.label[d] || ""; head += "<th class=\"day-h " + (w === 0 ? "sun" : w === 6 ? "sat" : "") + (lb ? " has-ev" : "") + "\"" + (lb ? " title=\"" + esc(lb) + "\"" : "") + ">" + d + "<br>" + WEEK[w] + (lb ? "<span class=\"ev-lab\">" + esc(lb) + "</span>" : "") + "</th>"; }
       head += "</tr>";
       let body = "";
       f.staff.forEach((s, p) => {
@@ -948,18 +978,19 @@
         });
         body += "</tr>";
       });
-      body += "<tr class=\"taisei-row\"><td class=\"staff-col\">体制<span class=\"wt\">タップで人数変更</span></td>";
+      body += "<tr class=\"taisei-row\"><td class=\"staff-col\">体制<span class=\"wt\">タップで人数・行事名</span></td>";
       for (let d = 0; d < D; d++) {
         const a = dayAnalysis(fi, d);
         const cls = !a.ok ? "tng" : a.is6 ? "t6" : a.is4 ? "t4" : "t5";
         let txt = (a.ok ? "○" : "！") + a.working + "人";
         if (a.target) txt = "<span class=\"tgt\">目標" + a.target + "</span><br>" + txt;
+        if (md.label[d + 1]) txt = "<span class=\"ev-tag\">★" + esc(md.label[d + 1]) + "</span>" + txt;
         if (a.missing.length) txt += "<br>不足" + a.missing.map((r) => SHORT[r]).join(",");
         body += "<td class=\"" + cls + (a.target ? " has-t" : "") + "\"><button type=\"button\" class=\"day-meta\" data-f=\"" + fi + "\" data-d=\"" + d + "\">" + txt + "</button></td>";
       }
       body += "</tr>";
       html += "<section class=\"card floor-cal\" style=\"--rowh:" + rowH(f.staff.length) + "mm\"><h2>" + esc(f.name) + " 勤務表 " + state.year + "年" + state.month + "月" +
-        (md.pattern ? " <small class=\"pat\">パターン" + md.pattern + "</small>" : "") + " <small class=\"pat\">" + MODE_LABEL[md.mode] + "</small></h2>" +
+        (md.pattern ? " <small class=\"pat\">パターン" + md.pattern + "</small>" : "") + " <small class=\"pat\">" + MODE_LABEL[md.mode] + "</small>" + (function () { const ev = Object.keys(md.label).map(Number).filter((k) => k >= 1 && k <= D && md.label[k]).sort((x, y) => x - y); return ev.length ? " <small class=\"evh\">★" + ev.map((k) => esc(state.month + "/" + k + " " + md.label[k] + (Number(md.target[k]) ? "（" + md.target[k] + "人）" : ""))).join("　") + "</small>" : ""; })() + "</h2>" +
         "<div class=\"cal-wrap\"><table class=\"cal\"><thead>" + head + "</thead><tbody>" + body + "</tbody></table></div></section>";
     });
     wrap.innerHTML = html;
@@ -967,8 +998,9 @@
     wrap.querySelectorAll("button.day-meta").forEach((b) => b.addEventListener("click", () => openTarget(+b.dataset.f, +b.dataset.d)));
   }
 
-  function openSheet(title, buttons) {
+  function openSheet(title, buttons, extra) {
     $("pickerTitle").textContent = title;
+    const ex = $("pickerExtra"); ex.innerHTML = ""; if (extra) ex.appendChild(extra);
     const grid = $("pickerGrid"); grid.innerHTML = "";
     buttons.forEach((bt) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "btn " + (bt.cls || "");
@@ -989,11 +1021,21 @@
     btns.push({ cls: "paid-btn" + (pfx ? " on" : ""), html: pfx ? "有給を外す" : "有給にする<small>この日を有給休暇に</small>", fn: () => togglePaid(fi, s, d) });
     openSheet(s.name + " / " + state.month + "/" + (d + 1), btns);
   }
+  const LABEL_MAX = 12;
+  function setLabel(md, day, v) { v = String(v || "").replace(/\s+/g, " ").trim().slice(0, LABEL_MAX); if (v) md.label[day] = v; else delete md.label[day]; }
   function openTarget(fi, d) {
     const md = monthData(fi), cur = Number(md.target[d + 1]) || 0;
-    const btns = [{ cls: "btn-secondary" + (cur ? "" : " on"), html: "標準<small>5人（足りない日は4人）</small>", fn: () => { delete md.target[d + 1]; } }];
-    [3, 4, 5, 6, 7, 8].forEach((k) => btns.push({ cls: "btn-ghost" + (cur === k ? " on" : ""), html: k + "人" + (k >= 6 ? "<small>行事など増員</small>" : k <= 4 ? "<small>減らす</small>" : ""), fn: () => { md.target[d + 1] = k; } }));
-    openSheet(state.floors[fi].name + " " + state.month + "/" + (d + 1) + " の必要人数", btns);
+    const box = document.createElement("div"); box.className = "ev-box";
+    box.innerHTML = "<label for=\"evInput\">行事・イベントの名前（なくてもOK）</label><div class=\"ev-row\"><input id=\"evInput\" type=\"text\" maxlength=\"" + LABEL_MAX + "\" placeholder=\"例：祭り\" enterkeyhint=\"done\" autocomplete=\"off\"><button type=\"button\" class=\"btn btn-primary\" id=\"evSave\">名前だけ決定</button><button type=\"button\" class=\"btn btn-ghost\" id=\"evClear\">名前を消す</button></div><p class=\"ev-note\">名前を入れてから下の人数を押すと、名前と人数が一緒に決まります。人数を変えないときは「名前だけ決定」。</p>";
+    const inp = box.querySelector("#evInput"); inp.value = md.label[d + 1] || "";
+    const done = () => { closePicker(); saveState(); renderAll(); };
+    box.querySelector("#evSave").addEventListener("click", () => { setLabel(md, d + 1, inp.value); done(); });
+    box.querySelector("#evClear").addEventListener("click", () => { delete md.label[d + 1]; done(); });
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setLabel(md, d + 1, inp.value); done(); } });
+    const lab = () => setLabel(md, d + 1, inp.value);
+    const btns = [{ cls: "btn-secondary" + (cur ? "" : " on"), html: "標準<small>5人（足りない日は4人）</small>", fn: () => { delete md.target[d + 1]; lab(); } }];
+    [3, 4, 5, 6, 7, 8].forEach((k) => btns.push({ cls: "btn-ghost" + (cur === k ? " on" : ""), html: k + "人" + (k >= 6 ? "<small>行事など増員</small>" : k <= 4 ? "<small>減らす</small>" : ""), fn: () => { md.target[d + 1] = k; lab(); } }));
+    openSheet(state.floors[fi].name + " " + state.month + "/" + (d + 1) + " の必要人数・行事名", btns, box);
   }
 
   function renderSummary() {
@@ -1001,6 +1043,8 @@
     viewFloors().forEach((fi) => {
       const f = state.floors[fi], md = monthData(fi), ot = offTargets(fi);
       html += "<h3 class=\"sum-h\">" + esc(f.name) + "（" + f.staff.length + "人）</h3><div class=\"cal-wrap\"><table class=\"summary-table\"><thead><tr><th>職員</th><th>タイプ</th><th>休/目標</th><th>うち希望休</th><th>有給/目標</th><th>明</th><th>休</th><th>早</th><th>遅</th><th>超</th><th>日</th><th>夜</th><th>研修</th><th>勤務日数</th><th>最長連勤</th><th>最長連休</th></tr></thead><tbody>";
+      const evs = Object.keys(md.label).map(Number).filter((k) => k >= 1 && k <= D && md.label[k]).sort((x, y) => x - y);
+      if (evs.length) html += "<p class=\"evline\">★ 行事・イベントの日: " + evs.map((k) => esc(state.month + "/" + k + " " + md.label[k] + "（" + (Number(md.target[k]) ? md.target[k] + "人" : "標準") + "）")).join("、") + "</p>";
       const warn = [], good = [];
       const W = { off: [], work: [], offrun: [], night: [], type: [], wish: [], loose: [], paid: [], paidFix: [], paidRun: [] };
       f.staff.forEach((s, p) => {
@@ -1057,6 +1101,8 @@
     viewFloors().forEach((fi) => {
       const f = state.floors[fi], md = monthData(fi);
       lines.push("勤務表 " + f.name + " " + state.year + "年" + state.month + "月");
+      const evs = Object.keys(md.label).map(Number).filter((k) => k >= 1 && k <= D && md.label[k]).sort((x, y) => x - y);
+      if (evs.length) lines.push("行事: " + evs.map((k) => state.month + "/" + k + " " + md.label[k] + (Number(md.target[k]) ? "（" + md.target[k] + "人）" : "")).join("、"));
       let h = "日付"; for (let d = 1; d <= D; d++) h += "\t" + d + WEEK[weekday(state.year, state.month, d)]; lines.push(h);
       f.staff.forEach((s) => lines.push(s.name + "\t" + md.sched[s.id].map((c, d) => (c === "明け" ? "明" : c === "休み" ? "休" : c === "有給" ? "有" : c === "研修" ? "研" : SHORT[c]) + (md.wish[s.id].indexOf(d + 1) >= 0 ? "(希)" : "")).join("\t")));
       lines.push("");
